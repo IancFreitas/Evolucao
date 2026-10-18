@@ -6,6 +6,8 @@ import { essentialsFor, completionKey } from '../core/missions.js';
 import { flush, loadState, requestPersistence, saveState } from '../storage/db.js';
 import { migrate } from '../storage/migrations.js';
 import { parseBackup, isEncrypted } from '../storage/backup.js';
+import { healthFromHash } from '../services/health.js';
+import { importHealthText } from './health.js';
 import { dueReminders, registerPeriodicSync, systemNotify } from '../services/notifications.js';
 import { LOGO, closeModal, esc, floatXp, fmt, icon, initTooltips, modalOpen, pickFile, promptDialog, readFile, toast } from './dom.js';
 
@@ -285,8 +287,23 @@ function bindEvents() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modalOpen()) closeModal();
   });
-  window.addEventListener('hashchange', () => navigate(location.hash.replace('#/', '')));
+  window.addEventListener('hashchange', () => { if (!consumeHealthLink()) navigate(location.hash.replace('#/', '')); });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); ui.installPrompt = e; if (store.state) render(); });
+}
+
+/** Link aberto pelo Atalho do iPhone: #/saude?j=... (os dados nunca saem do aparelho). */
+function consumeHealthLink() {
+  if (!location.hash.startsWith('#/saude')) return false;
+  let text = null;
+  try { text = healthFromHash(location.hash); } catch { toast('Link do Saúde inválido.', 'err'); }
+  history.replaceState(null, '', '#/log');
+  if (store.state && text) {
+    navigate('log');
+    importHealthText(text);
+  } else if (!store.state) {
+    toast('Crie seu personagem antes de importar dados do Saúde.', 'err', 5000);
+  }
+  return true;
 }
 
 /* ---------------------------- Lembretes ---------------------------- */
@@ -323,9 +340,11 @@ export async function start() {
     try { store.state = migrate(saved); } catch { store.state = null; }
   }
   store.listeners.add(() => { if (!modalOpen()) render(); });
+  const healthLink = location.hash.startsWith('#/saude');
   ui.view = location.hash.replace('#/', '') || 'status';
   if (!VIEWS.some((v) => v.id === ui.view)) ui.view = 'status';
   render();
+  if (healthLink) consumeHealthLink();
   tick();
   setInterval(tick, 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tick(); });

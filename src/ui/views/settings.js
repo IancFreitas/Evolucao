@@ -8,6 +8,7 @@ import { csvToItems, icsToItems, jsonToItems, missionsToIcs } from '../../servic
 import { buildBackup, download, isEncrypted, logToCsv, parseBackup } from '../../storage/backup.js';
 import { get as dbGet, listSnapshots, wipeAll } from '../../storage/db.js';
 import { migrate } from '../../storage/migrations.js';
+import { healthForms, healthSummaryLine, importHealthFile, pasteHealth } from '../health.js';
 import { closeModal, confirmDialog, esc, fmt, icon, openModal, pickFile, promptDialog, readFile, toast } from '../dom.js';
 import { render as rerender, run, store, ui } from '../app.js';
 
@@ -98,9 +99,60 @@ function notificationsTab(c) {
     Notificações garantidas com o app fechado exigem um servidor de push (expansão futura).</p>`;
 }
 
-function integrationsTab() {
+function healthCard(c) {
+  const h = c.state.settings.health;
+  const num = (name, label, val, attrs) => `<label class="field">${label}<input name="${name}" type="number" ${attrs} value="${val}"></label>`;
+  return `<div class="panel flat mt" style="border:1px solid rgba(255,92,122,.35);box-shadow:none">
+    <div class="panel-title"><h3>❤️ Saúde do iPhone (Apple Health)</h3><span class="muted" style="font-size:12px">${esc(healthSummaryLine(c.state))}</span></div>
+    <p class="muted" style="margin-top:0;font-size:13px">Navegadores não acessam o app Saúde diretamente (a Apple libera o HealthKit só para apps nativos).
+    Por isso a conexão usa um <b>Atalho do iPhone</b>, que pode rodar sozinho todo dia, ou a <b>exportação do Saúde</b>. Sono, passos, minutos de exercício,
+    atenção plena e treinos viram registros quando atingem as metas abaixo. Os dados ficam só no seu aparelho.</p>
+    <div class="row wrap">
+      <button class="btn sm primary" data-action="health-paste">${icon('upload')} Colar dados do Atalho</button>
+      <button class="btn sm" data-action="health-file">${icon('upload')} Importar exportação (.zip ou .xml)</button>
+      <button class="btn sm ghost" data-action="health-guide">Como configurar o Atalho</button>
+    </div>
+    <form data-form="health-settings" class="form-grid mt">
+      ${num('sleepGoal', 'Meta de sono (horas)', h.sleepGoal, 'min="3" max="12" step="0.25"')}
+      ${num('stepsGoal', 'Meta de passos', h.stepsGoal, 'min="500" max="50000" step="500"')}
+      ${num('exerciseGoal', 'Meta de minutos de exercício', h.exerciseGoal, 'min="5" max="300"')}
+      ${num('mindfulGoal', 'Meta de atenção plena (min)', h.mindfulGoal, 'min="1" max="120"')}
+      ${num('minWorkoutMinutes', 'Duração mínima de um treino (min)', h.minWorkoutMinutes, 'min="1" max="300"')}
+      <label class="check" style="align-self:end;padding-bottom:9px"><input type="checkbox" name="autoConfirm" ${h.autoConfirm ? 'checked' : ''}> Confirmar automaticamente dados do Saúde</label>
+      <div class="full"><button class="btn sm">Salvar metas</button></div>
+    </form></div>`;
+}
+
+function healthGuide() {
+  const link = `${location.origin}${location.pathname}#/saude?j=`;
+  openModal('Atalho: Saúde → System Ascension', `<div class="stack" style="font-size:14px">
+    <p class="muted" style="margin:0">No iPhone, abra o app <b>Atalhos</b> → <b>+</b> e adicione as ações abaixo (os nomes podem variar um pouco conforme a versão do iOS).</p>
+    <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px">
+      <li><b>Buscar Amostras de Saúde</b> (Find Health Samples): tipo <i>Passos</i>, data de início <i>hoje</i>, agrupar por <i>Dia</i>.
+        Depois <b>Calcular Estatísticas</b> → <i>Soma</i>. Renomeie o resultado para <code>Passos</code>.</li>
+      <li>Repita para <i>Minutos de Exercício</i> → <code>Exercicio</code> e <i>Minutos de Atenção Plena</i> → <code>Mente</code>.</li>
+      <li><b>Buscar Amostras de Saúde</b>: tipo <i>Análise do Sono</i>, data de término <i>hoje</i>, valor <i>não é</i> "Na cama" nem "Acordado".
+        <b>Obter Detalhes</b> → <i>Duração</i> → <b>Calcular Estatísticas</b> → <i>Soma</i> → <code>Sono</code> (horas, minutos ou segundos: o app converte).</li>
+      <li><b>Data Atual</b> → <b>Formatar Data</b> com formato personalizado <code>yyyy-MM-dd</code> → <code>Dia</code>.</li>
+      <li><b>Dicionário</b> com as chaves: <code>date</code> = Dia, <code>steps</code> = Passos, <code>exerciseMinutes</code> = Exercicio,
+        <code>mindfulMinutes</code> = Mente, <code>sleepHours</code> = Sono.</li>
+      <li><b>App instalado na tela de início:</b> <b>Copiar para Área de Transferência</b> (o Dicionário) e <b>Mostrar Notificação</b> "Abra o Ascension e toque em Colar dados".
+        No app: <i>Registrar</i> → <b>Colar dados do Saúde</b>.</li>
+      <li><b>Usando no Safari (sem instalar):</b> em vez de copiar, use <b>Codificar URL</b> no Dicionário e <b>Abrir URLs</b> com:<br>
+        <code style="word-break:break-all">${esc(link)}</code><i>[texto codificado]</i></li>
+      <li>Para rodar sozinho: aba <b>Automação</b> → <b>Hora do Dia</b> (ex.: 22:00) → <i>Executar imediatamente</i> → escolha o atalho.</li>
+    </ol>
+    <div class="notice">Por que dois modos? No iPhone, o app instalado na tela de início guarda dados separados do Safari. Um link aberto pelo Atalho abre no Safari,
+    então para o app instalado use a área de transferência.</div>
+    <div class="notice warn">Treinos com o tipo (musculação, corrida, ioga…) chegam com precisão pela <b>exportação do Saúde</b>: app Saúde → sua foto →
+    <i>Exportar Todos os Dados de Saúde</i> → salve em Arquivos → aqui, <b>Importar exportação</b> e escolha o .zip. Só os últimos 30 dias são considerados, e nada é enviado para a internet.</div>
+    <div class="modal-actions"><button class="btn ghost" data-action="health-copy-link">Copiar link</button><button class="btn primary" data-action="modal-close">Entendi</button></div></div>`, { wide: true });
+}
+
+function integrationsTab(c) {
   const card = (ic, title, desc, buttons) => `<div class="reward"><div class="ic">${ic}</div><h4>${title}</h4><p>${desc}</p><div class="row wrap">${buttons}</div></div>`;
-  return `<div id="integrations" class="notice">Tudo que é importado entra na fila <b>Aguardando confirmação</b> (tela Registrar). Nada gera XP sem a sua confirmação,
+  return `<div id="integrations" class="notice">Tudo que é importado entra na fila <b>Aguardando confirmação</b> (tela Registrar). Nada gera XP sem a sua confirmação
+    (exceto o app Saúde, se você ativar a confirmação automática),
     e o mesmo item nunca é importado duas vezes.</div>
     <div class="shop mt">
       ${card('📅', 'Calendário', 'Importe um arquivo .ics (Google Agenda, Outlook, Apple). Eventos passados viram registros para confirmar; futuros podem virar missões.',
@@ -114,8 +166,9 @@ function integrationsTab() {
       ${card('🧠', 'Central de Inteligência Pessoal', 'Receba eventos em JSON de outro sistema seu. Formato documentado em docs/INTEGRACOES.md.',
         `<button class="btn sm" data-action="imp-json">${icon('upload')} Arquivo JSON</button><button class="btn sm ghost" data-action="paste-json">Colar JSON</button>`)}
     </div>
+    ${healthCard(c)}
     <details class="box mt"><summary>Integrações em tempo real (exigem autorização e servidor)</summary>
-      <p class="muted" style="font-size:13px">Sincronização automática com Google Agenda, Todoist API, Google Fit / Health Connect, Apple Health e Strava API requer
+      <p class="muted" style="font-size:13px">Sincronização automática com Google Agenda, Todoist API, Google Fit / Health Connect e Strava API requer
       login OAuth e um backend seguro para guardar tokens. A arquitetura já está preparada: basta um adaptador que produza itens no mesmo formato da fila de confirmação.</p></details>`;
 }
 
@@ -180,6 +233,12 @@ async function importItems(items, label, future = []) {
 }
 
 const actions = {
+  'health-paste': () => pasteHealth(),
+  'health-file': () => importHealthFile(),
+  'health-guide': () => healthGuide(),
+  'health-copy-link': async () => {
+    try { await navigator.clipboard.writeText(`${location.origin}${location.pathname}#/saude?j=`); toast('Link copiado.'); } catch { toast('Não foi possível copiar.', 'err'); }
+  },
   'set-theme': (el) => run((s) => E.updateProfile(s, { theme: el.dataset.theme }), null, { quiet: true }),
   'rules-reset': async () => {
     if (await confirmDialog('Restaurar todas as regras de pontuação para o padrão?')) run((s) => E.updateRules(s, structuredClone(DEFAULT_RULES)), null, { quiet: true });
@@ -280,6 +339,10 @@ const changes = {
 };
 
 const forms = {
+  ...healthForms,
+  'health-settings': (data) => {
+    if (run((s) => E.updateHealthSettings(s, { ...data, autoConfirm: !!data.autoConfirm }), null, { quiet: true })) toast('Metas do Saúde salvas.');
+  },
   profile: (data) => { run((s) => E.updateProfile(s, { name: data.name }), null, { quiet: true }); toast('Perfil salvo.'); },
   rules: (data) => {
     const patch = { ...data, missionTypeXp: {} };

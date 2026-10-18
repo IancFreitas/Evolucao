@@ -193,3 +193,39 @@ test('importadores reconhecem CSV, ICS e JSON', () => {
   const j = jsonToItems(readFileSync('docs/exemplos/central.json', 'utf8'), DEFAULT_ACTIVITIES);
   assert.equal(j.length, 2);
 });
+
+import { parseHealthExport, parseHealthPayload, summariesToItems, healthFromHash } from '../src/services/health.js';
+import { DEFAULT_HEALTH } from '../src/core/defaults.js';
+import { openAsBlob } from 'node:fs';
+
+test('exportação do Saúde (xml e zip): sem contagem dupla, só a janela recente', async () => {
+  for (const f of ['export.xml', 'export.zip']) {
+    const days = await parseHealthExport(await openAsBlob(`tests/fixtures/${f}`), { today: '2026-10-18', windowDays: 30 });
+    const d17 = days.find((d) => d.date === '2026-10-17');
+    const d18 = days.find((d) => d.date === '2026-10-18');
+    assert.equal(d17.steps, 9200, `${f}: maior fonte do dia, não a soma`);
+    assert.equal(d18.sleepHours, 7.5, `${f}: "Na cama" não conta`);
+    assert.equal(d18.mindfulMinutes, 10);
+    assert.equal(d17.workouts[0].type, 'HKWorkoutActivityTypeRunning');
+    assert.ok(!days.some((d) => d.date < '2026-09-18'));
+    const items = summariesToItems(days, DEFAULT_HEALTH, DEFAULT_ACTIVITIES);
+    const ids = items.map((i) => `${i.date}:${i.activity}`);
+    assert.deepEqual(ids.sort(), ['2026-10-16:cardio', '2026-10-17:cardio', '2026-10-17:passos', '2026-10-18:reflexao', '2026-10-18:sono', '2026-10-18:treino']);
+  }
+});
+
+test('dados do Atalho: unidades flexíveis, link e confirmação automática', () => {
+  const days = parseHealthPayload('{"date":"18/10/2026","sleepHours":"450","steps":"9.500","mindfulMinutes":"3"}', '2026-10-18');
+  assert.equal(days[0].date, '2026-10-18');
+  assert.equal(days[0].sleepHours, 7.5);
+  assert.equal(days[0].steps, 9500);
+  const json = JSON.stringify({ steps: 12000 });
+  assert.equal(healthFromHash(`#/saude?j=${encodeURIComponent(json)}`), json);
+  assert.equal(healthFromHash(`#/saude?d=${Buffer.from(json).toString('base64url')}`), json);
+  const s = fresh();
+  s.settings.health = { ...DEFAULT_HEALTH };
+  const items = summariesToItems(parseHealthPayload(json, E.todayKey(s)), s.settings.health, s.settings.activities);
+  const r = E.importItems(s, items, { autoConfirm: true });
+  assert.deepEqual(r, { added: 1, confirmed: 1, pending: 0 });
+  assert.equal(E.importItems(s, items, { autoConfirm: true }).added, 0, 'reimportar não duplica');
+});

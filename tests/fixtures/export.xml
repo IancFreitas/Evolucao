@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HealthData [ <!ELEMENT HealthData (ExportDate,Me,(Record|Workout)*)> ]>
+<HealthData locale="pt_BR">
+ <ExportDate value="2026-10-18 21:00:00 -0300"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="2026-10-17 08:00:00 -0300" endDate="2026-10-17 09:00:00 -0300" value="5000"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="2026-10-17 18:00:00 -0300" endDate="2026-10-17 19:00:00 -0300" value="4200"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="Apple Watch" unit="count" startDate="2026-10-17 08:00:00 -0300" endDate="2026-10-17 09:00:00 -0300" value="8800"/>
+ <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="2025-01-01 08:00:00 -0300" endDate="2025-01-01 09:00:00 -0300" value="20000"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" startDate="2026-10-17 23:30:00 -0300" endDate="2026-10-18 03:30:00 -0300" value="HKCategoryValueSleepAnalysisAsleepCore"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" startDate="2026-10-18 03:30:00 -0300" endDate="2026-10-18 07:00:00 -0300" value="HKCategoryValueSleepAnalysisAsleepDeep"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="iPhone" startDate="2026-10-17 23:00:00 -0300" endDate="2026-10-18 07:30:00 -0300" value="HKCategoryValueSleepAnalysisInBed"/>
+ <Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Apple Watch" startDate="2026-10-18 07:10:00 -0300" endDate="2026-10-18 07:20:00 -0300" value="HKCategoryValueNotApplicable"/>
+ <Record type="HKQuantityTypeIdentifierAppleExerciseTime" sourceName="Apple Watch" unit="min" startDate="2026-10-16 07:00:00 -0300" endDate="2026-10-16 07:01:00 -0300" value="35"/>
+ <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="32.5" durationUnit="min" sourceName="Apple Watch" startDate="2026-10-17 07:00:12 -0300" endDate="2026-10-17 07:32:42 -0300">
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" sum="300" unit="Cal"/>
+ </Workout>
+ <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="50" durationUnit="min" sourceName="Apple Watch" startDate="2026-10-18 18:00:00 -0300" endDate="2026-10-18 18:50:00 -0300"/>
+ <Workout workoutActivityType="HKWorkoutActivityTypeWalking" duration="8" durationUnit="min" sourceName="Apple Watch" startDate="2026-10-18 12:00:00 -0300" endDate="2026-10-18 12:08:00 -0300"/>
+</HealthData>

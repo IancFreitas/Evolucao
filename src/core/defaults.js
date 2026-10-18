@@ -35,6 +35,7 @@ export const DEFAULT_ACTIVITIES = [
   { key: 'autocuidado', name: 'Autocuidado', icon: '🌿', xp: 20, attrs: { VIT: 3 }, dailyLimit: 2 },
   { key: 'sono', name: 'Meta de sono cumprida', icon: '🌙', xp: 20, attrs: { VIT: 3, DISC: 1 }, dailyLimit: 1 },
   { key: 'descanso', name: 'Descanso planejado', icon: '🛌', xp: 15, attrs: { VIT: 2, WIS: 1 }, dailyLimit: 1 },
+  { key: 'passos', name: 'Meta de passos', icon: '🚶', xp: 15, attrs: { END: 2, VIT: 1 }, dailyLimit: 1 },
 ];
 
 export const DEFAULT_RULES = {
@@ -76,6 +77,18 @@ export const DEFAULT_NOTIFICATIONS = {
   attribute: true,
 };
 
+// Metas usadas para transformar dados do app Saúde em registros (nada pontua abaixo da meta).
+export const DEFAULT_HEALTH = {
+  sleepGoal: 7,
+  stepsGoal: 8000,
+  exerciseGoal: 30,
+  mindfulGoal: 5,
+  minWorkoutMinutes: 15,
+  // false = dados do Saúde também passam pela fila de confirmação
+  autoConfirm: false,
+  lastImport: null,
+};
+
 export const DAY_STATUSES = {
   normal: { label: 'Normal', icon: '⚔️', desc: 'Dia comum, missões completas.' },
   hard: { label: 'Dia difícil', icon: '🌧️', desc: 'Missões leves no lugar das completas. Nada é perdido.' },
@@ -106,6 +119,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
       rules: structuredClone(DEFAULT_RULES),
       activities: structuredClone(DEFAULT_ACTIVITIES),
       notifications: structuredClone(DEFAULT_NOTIFICATIONS),
+      health: structuredClone(DEFAULT_HEALTH),
     },
     missions: withExamples ? exampleMissions(today) : [],
     log: [],
@@ -115,7 +129,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
     inventory: [],
     pending: [],
     inbox: [],
-    meta: { backups: 0, lastNotified: {} },
+    meta: { backups: 0, lastNotified: {}, addedActivities: ['passos'] },
   };
 }
 

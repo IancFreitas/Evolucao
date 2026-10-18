@@ -33,6 +33,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |
 | Análise | XP diário/semanal/mensal, radar e evolução dos atributos, hábitos por dia, mapa de consistência, missões principais, histórico de níveis, áreas de dedicação e de atenção, recordes |
 | Recuperação | Estados do dia (normal, difícil, descanso planejado, doente, imprevisto), dias protegidos, escudos semanais, bônus de retomada, conquista "Fênix", recordes nunca perdidos |
+| Saúde do iPhone | Atalho do iPhone (automático, via área de transferência ou link) e exportação do app Saúde (`.zip`/`.xml`) com sono, passos, exercício, atenção plena e treinos por tipo, guiados por metas configuráveis ([guia](docs/SAUDE-IPHONE.md)) |
 | Integrações | Importação de calendário (.ics), tarefas, atividade física e estudos (.csv) e Central de Inteligência (JSON), sempre via **fila de confirmação**; exportação de prazos em .ics |
 | Notificações | Missões do dia, revisão semanal, objetivos, nível, conquistas, atributos; horários configuráveis e desativação individual; caixa de entrada no app |
 | Dados | Backup JSON (opcionalmente criptografado com senha, AES-256-GCM), restauração, CSV do histórico, 7 pontos de restauração automáticos, exclusão total |
@@ -54,7 +55,9 @@ Com ~200 XP/dia, o nível 10 chega em cerca de 1 mês e o nível 50 em pouco mai
 
 ## O que depende de integrações adicionais
 
-- **Sincronização automática** com Google Agenda, Todoist, Google Fit / Health Connect, Apple Health ou
+- **Apple Health em segundo plano, sem Atalho**: exige um app nativo de iOS (a Apple não libera o HealthKit para a web).
+  Hoje a conexão é pelo Atalho do iPhone ou pela exportação do Saúde.
+- **Sincronização automática** com Google Agenda, Todoist, Google Fit / Health Connect ou
   Strava: exige login OAuth e um backend para guardar tokens com segurança. Hoje a integração é por
   arquivo exportado desses serviços, e um adaptador futuro só precisa gerar itens para a mesma fila.
 - **Notificações garantidas com o app fechado**: exigem um servidor Web Push. Hoje os lembretes disparam

@@ -3,6 +3,7 @@ import { DAY_STATUSES } from '../../core/defaults.js';
 import { addDays, formatDay } from '../../core/dates.js';
 import { esc, icon, toast } from '../dom.js';
 import { render as rerender, run, ui } from '../app.js';
+import { healthForms, pasteHealth } from '../health.js';
 
 function usage(c, key, date) {
   return c.state.log.filter((e) => e.activity === key && e.date === date && (e.kind === 'activity' || (e.kind === 'mission' && e.missionType === 'daily'))).length;
@@ -42,7 +43,7 @@ function render(c) {
         </form></details>
     </div>
 
-    <div class="panel mt" id="pending"><div class="panel-title"><h2>Aguardando confirmação</h2><button class="btn sm ghost" data-nav="settings" data-scroll="integrations">Importar dados →</button></div>
+    <div class="panel mt" id="pending"><div class="panel-title"><h2>Aguardando confirmação</h2><div class="row wrap"><button class="btn sm" data-action="health-paste">❤️ Colar dados do Saúde</button><button class="btn sm ghost" data-action="goto-integrations">Importar dados →</button></div></div>
       ${pendingList(c)}
     </div>`;
 }
@@ -62,6 +63,8 @@ function pendingList(c) {
 }
 
 const actions = {
+  'health-paste': () => pasteHealth(),
+  'goto-integrations': () => { ui.tabs.settings = 'integrations'; location.hash = '#/settings'; },
   'log-activity': (el) => run((s) => E.logActivity(s, el.dataset.key, { date: el.dataset.date }), el),
   'day-status': (el) => {
     run((s) => E.setDayStatus(s, el.dataset.date, el.dataset.status), null, { quiet: true });
@@ -92,6 +95,7 @@ const changes = {
 };
 
 const forms = {
+  ...healthForms,
   'log-note': (data) => run((s) => E.logActivity(s, data.activity, { date: data.date, note: data.note })),
 };
 

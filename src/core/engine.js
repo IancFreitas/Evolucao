@@ -552,6 +552,34 @@ export function confirmPending(state, id, activityOverride, today = todayKey(sta
   return entry;
 }
 
+/**
+ * Importa itens e, se `autoConfirm`, já confirma os novos (fontes confiáveis como o app Saúde).
+ * Itens que esbarram em limites diários continuam pendentes.
+ */
+export function importItems(state, items, { autoConfirm = false } = {}, today = todayKey(state)) {
+  const before = new Set(state.pending.map((p) => p.id));
+  const added = addPending(state, items);
+  let confirmed = 0;
+  if (autoConfirm) {
+    for (const p of state.pending.filter((x) => !before.has(x.id) && x.activity)) {
+      try { confirmPending(state, p.id, null, today); confirmed++; } catch { /* fica na fila */ }
+    }
+  }
+  return { added, confirmed, pending: added - confirmed };
+}
+
+export function updateHealthSettings(state, patch) {
+  const h = state.settings.health;
+  const n = (v, min, max, d) => (Number.isFinite(Number(v)) && v !== '' ? Math.max(min, Math.min(max, Number(v))) : d);
+  h.sleepGoal = n(patch.sleepGoal ?? h.sleepGoal, 3, 12, 7);
+  h.stepsGoal = Math.round(n(patch.stepsGoal ?? h.stepsGoal, 500, 50000, 8000));
+  h.exerciseGoal = Math.round(n(patch.exerciseGoal ?? h.exerciseGoal, 5, 300, 30));
+  h.mindfulGoal = Math.round(n(patch.mindfulGoal ?? h.mindfulGoal, 1, 120, 5));
+  h.minWorkoutMinutes = Math.round(n(patch.minWorkoutMinutes ?? h.minWorkoutMinutes, 1, 300, 15));
+  if (patch.autoConfirm !== undefined) h.autoConfirm = !!patch.autoConfirm;
+  return h;
+}
+
 export function rejectPending(state, id) {
   state.pending = state.pending.filter((x) => x.id !== id);
 }
