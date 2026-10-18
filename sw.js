@@ -1,5 +1,5 @@
 // Service worker: funcionamento offline, lembretes periódicos e clique em notificações.
-const VERSION = 'sa-v2';
+const VERSION = 'sa-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png',

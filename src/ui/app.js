@@ -9,7 +9,7 @@ import { parseBackup, isEncrypted } from '../storage/backup.js';
 import { healthFromHash } from '../services/health.js';
 import { importHealthText } from './health.js';
 import { dueReminders, registerPeriodicSync, systemNotify } from '../services/notifications.js';
-import { LOGO, closeModal, esc, floatXp, fmt, icon, initTooltips, modalOpen, pickFile, promptDialog, readFile, toast } from './dom.js';
+import { closeModal, esc, floatXp, fmt, icon, initTooltips, logo, modalOpen, pickFile, promptDialog, readFile, toast } from './dom.js';
 
 import statusView from './views/status.js';
 import missionsView from './views/missions.js';
@@ -158,15 +158,15 @@ export function render() {
   const c = ctx();
   applyTheme(c.state);
   const view = VIEWS.find((v) => v.id === ui.view) || statusView;
-  const brand = `<div class="brand">${LOGO}<div class="brand-name">SYSTEM<span>ASCENSION</span></div></div>`;
+  const brand = () => `<div class="brand">${logo()}<div class="brand-name">SYSTEM<span>ASCENSION</span></div></div>`;
   const unread = c.state.inbox.filter((n) => !n.read).length;
   root().innerHTML = `<div class="app">
-    <aside class="sidebar" aria-label="Navegação">${brand}${navItems(c)}
+    <aside class="sidebar" aria-label="Navegação">${brand()}${navItems(c)}
       <div class="sidebar-foot"><div class="hud">Nv ${c.d.level.level} · ${esc(c.d.cls.name)}</div>
       <div class="bar thin mt-s"><i style="--w:${(c.d.level.progress * 100).toFixed(1)}%"></i></div>
       ${ui.installPrompt ? `<button class="btn sm mt" data-action="install">${icon('download')} Instalar app</button>` : ''}</div>
     </aside>
-    <header class="topbar">${brand}<div class="row"><span class="chip gold num">◈ ${fmt(c.d.coins)}</span>
+    <header class="topbar">${brand()}<div class="row"><span class="chip gold num">◈ ${fmt(c.d.coins)}</span>
       <button class="btn icon ghost" data-nav="status" data-scroll="inbox" aria-label="Notificações">${icon('bell')}${unread ? `<span class="count" style="position:absolute;margin:-18px 0 0 18px;font-size:10px;background:var(--accent);border-radius:99px;padding:0 5px">${unread}</span>` : ''}</button></div></header>
     <main class="main" id="main">${view.render(c)}</main>
     <nav class="bottom-nav" aria-label="Navegação principal">
@@ -180,7 +180,7 @@ export function render() {
 
 function renderOnboarding() {
   root().innerHTML = `<div class="onboard"><form class="panel" data-form="onboard">
-    <div class="row">${LOGO}<span class="typing">[ SISTEMA ] Um novo jogador foi detectado.</span></div>
+    <div class="row">${logo()}<span class="typing">[ SISTEMA ] Um novo jogador foi detectado.</span></div>
     <h1>Bem-vindo ao System Ascension</h1>
     <p class="muted">Seu progresso real vira evolução de personagem. Hábitos, estudos, treinos e descanso geram XP,
     atributos e conquistas. Os dados ficam salvos apenas neste dispositivo.</p>

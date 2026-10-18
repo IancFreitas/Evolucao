@@ -34,7 +34,13 @@ const PATHS = {
 export const icon = (name, cls = '') =>
   `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || ''}</svg>`;
 
-export const LOGO = `<svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs><path d="M32 4 58 18v28L32 60 6 46V18z" fill="none" stroke="url(#lg)" stroke-width="3"/><path d="M32 14 46 40H18z" fill="url(#lg)" opacity=".9"/><path d="M32 26 38 38H26z" fill="#04050c"/></svg>`;
+// Cada instância do logo precisa de um id próprio: um gradiente dentro de um elemento oculto
+// (como a barra lateral no celular) não é desenhado para quem o referencia.
+let logoSeq = 0;
+export const logo = () => {
+  const id = `lg${++logoSeq}`;
+  return `<svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs><path d="M32 4 58 18v28L32 60 6 46V18z" fill="none" stroke="url(#${id})" stroke-width="3"/><path d="M32 14 46 40H18z" fill="url(#${id})" opacity=".9"/><path d="M32 26 38 38H26z" fill="#04050c"/></svg>`;
+};
 
 /* ---------- Toasts ---------- */
 let toastRoot;
