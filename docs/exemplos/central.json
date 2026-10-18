@@ -1,0 +1,7 @@
+{
+  "source": "central",
+  "events": [
+    { "id": "ci-001", "date": "2026-10-18", "activity": "estudo", "title": "Revisão de algoritmos", "detail": "45 min" },
+    { "id": "ci-002", "date": "2026-10-18", "activity": "sono", "title": "Dormiu 7h40", "detail": "dados do relógio" }
+  ]
+}
