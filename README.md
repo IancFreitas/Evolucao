@@ -36,7 +36,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Saúde do iPhone | Atalho do iPhone (automático, via área de transferência ou link) e exportação do app Saúde (`.zip`/`.xml`) com sono, passos, exercício, atenção plena e treinos por tipo, guiados por metas configuráveis ([guia](docs/SAUDE-IPHONE.md)) |
 | Integrações | Importação de calendário (.ics), tarefas, atividade física e estudos (.csv) e Central de Inteligência (JSON), sempre via **fila de confirmação**; exportação de prazos em .ics |
 | Notificações | Missões do dia, revisão semanal, objetivos, nível, conquistas, atributos; horários configuráveis e desativação individual; caixa de entrada no app |
-| Dados | Backup JSON (opcionalmente criptografado com senha, AES-256-GCM), restauração, CSV do histórico, 7 pontos de restauração automáticos, exclusão total |
+| Dados | **Backup no iCloud** com um toque (menu Compartilhar → iCloud Drive, ou Atalho que salva direto na pasta), lembrete automático de backup em atraso, senha opcional (AES-256-GCM), restauração a partir do iCloud, CSV do histórico, 7 pontos de restauração automáticos, exclusão total |
 
 ## Valores padrão de XP
 

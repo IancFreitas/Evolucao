@@ -8,6 +8,7 @@ import { migrate } from '../storage/migrations.js';
 import { parseBackup, isEncrypted } from '../storage/backup.js';
 import { healthFromHash } from '../services/health.js';
 import { importHealthText } from './health.js';
+import { backupOverdue, daysSinceBackup } from './cloud.js';
 import { dueReminders, registerPeriodicSync, systemNotify } from '../services/notifications.js';
 import { closeModal, esc, floatXp, fmt, icon, initTooltips, logo, modalOpen, pickFile, promptDialog, readFile, toast } from './dom.js';
 
@@ -326,6 +327,16 @@ function tick() {
       if (notif.enabled) pushInbox(st, r.type, title, body);
     });
     systemNotify(notif, r.type, title, body);
+  }
+  // Backup em atraso: avisa uma vez por dia (o banner do Status continua visível)
+  if (backupOverdue(s) && s.meta.lastNotified?.backup !== today) {
+    const days = daysSinceBackup(s);
+    const body = days == null ? 'Você ainda não salvou nenhuma cópia. Leva um toque.' : `Seu último backup foi há ${days} dia(s).`;
+    store.mutate((st) => {
+      st.meta.lastNotified = { ...(st.meta.lastNotified || {}), backup: today };
+      pushInbox(st, 'backup', 'Salve uma cópia no iCloud', body);
+    });
+    systemNotify(notif, 'backup', 'Salve uma cópia no iCloud', body);
   }
 }
 

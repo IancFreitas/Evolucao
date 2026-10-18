@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = {
   levelUp: 'Subida de nível',
   achievement: 'Conquistas desbloqueadas',
   attribute: 'Evolução de atributos',
+  backup: 'Lembrete de backup no iCloud',
 };
 
 export const supported = () => typeof window !== 'undefined' && 'Notification' in window;

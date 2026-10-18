@@ -8,6 +8,7 @@ import { csvToItems, icsToItems, jsonToItems, missionsToIcs } from '../../servic
 import { buildBackup, download, isEncrypted, logToCsv, parseBackup } from '../../storage/backup.js';
 import { get as dbGet, listSnapshots, wipeAll } from '../../storage/db.js';
 import { migrate } from '../../storage/migrations.js';
+import { BACKUP_FOLDER, backupStatusText, saveBackupToCloud } from '../cloud.js';
 import { healthForms, healthSummaryLine, importHealthFile, pasteHealth } from '../health.js';
 import { closeModal, confirmDialog, esc, fmt, icon, openModal, pickFile, promptDialog, readFile, toast } from '../dom.js';
 import { render as rerender, run, store, ui } from '../app.js';
@@ -174,16 +175,36 @@ function integrationsTab(c) {
 
 function dataTab(c) {
   return `<div class="grid g2">
-    <div class="reward"><div class="ic">💾</div><h4>Backup</h4><p>Exporte todos os dados em JSON. Opcionalmente proteja com senha (criptografia AES-256-GCM no próprio navegador).</p>
-      <div class="row wrap"><button class="btn sm primary" data-action="backup-export">${icon('download')} Exportar backup</button><button class="btn sm" data-action="backup-import">${icon('upload')} Restaurar backup</button>
+    <div class="reward" style="border-color:color-mix(in srgb,var(--accent) 50%,transparent)"><div class="ic">☁️</div><h4>Backup no iCloud</h4>
+      <p>Salva uma cópia completa (missões, histórico, conquistas, configurações) no seu iCloud Drive. No iPhone, abre o menu Compartilhar:
+      na primeira vez escolha <b>Salvar em Arquivos → iCloud Drive</b>, crie a pasta <b>${BACKUP_FOLDER}</b> e salve. Nas próximas, o iPhone já sugere a mesma pasta.</p>
+      <div class="row wrap"><button class="btn sm primary" data-action="cloud-save">${icon('upload')} Salvar no iCloud agora</button>
+      <button class="btn sm" data-action="backup-import">${icon('download')} Restaurar do iCloud</button>
       <button class="btn sm ghost" data-action="export-csv">CSV do histórico</button></div>
-      <div class="tl-sub">Backups exportados: ${c.state.meta.backups || 0}</div></div>
+      <div class="tl-sub">${esc(backupStatusText(c.state))} · ${c.state.meta.backups || 0} backup(s) no total</div>
+      <form data-form="backup-settings" class="form-grid mt">
+        <label class="field">Lembrar de salvar a cada<select name="reminderDays">${[[1, 'dia'], [3, '3 dias'], [7, '7 dias'], [14, '14 dias'], [30, '30 dias'], [0, 'nunca lembrar']].map(([v, l]) => `<option value="${v}" ${Number(c.state.settings.backup.reminderDays) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field">Senha dos backups (opcional)<input name="password" type="password" autocomplete="new-password" placeholder="${c.state.settings.backup.password ? '•••••• (definida)' : 'sem senha'}"></label>
+        <label class="check full"><input type="checkbox" name="clearPassword"> Remover a senha (backups voltam a ser JSON simples)</label>
+        <div class="full tl-sub">Com senha, o arquivo no iCloud fica criptografado (AES-256). A senha fica guardada só neste aparelho para você não precisar digitá-la sempre.
+        <b>Anote-a:</b> sem ela não é possível restaurar.</div>
+        <div class="full"><button class="btn sm">Salvar preferências</button></div>
+      </form>
+      <details class="box mt"><summary>Salvar com um toque, sem escolher pasta (Atalho)</summary>
+        <ol style="margin:8px 0 0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px">
+          <li>No app <b>Atalhos</b>, crie um atalho chamado <b>Salvar no iCloud (Ascension)</b>.</li>
+          <li>Em detalhes do atalho (ícone ⓘ), ative <b>Mostrar na Folha de Compartilhamento</b> e aceite <b>Arquivos</b>.</li>
+          <li>Adicione <b>Salvar Arquivo</b>: entrada <i>Entrada do Atalho</i>, desative <b>Perguntar Onde Salvar</b>,
+          caminho <code>/${BACKUP_FOLDER}/</code> e ative <b>Substituir se o arquivo existir</b>.</li>
+          <li>Aqui, toque em <b>Salvar no iCloud agora</b> e escolha o atalho no menu Compartilhar. Ele salva direto em iCloud Drive → Atalhos → ${BACKUP_FOLDER}.</li>
+        </ol></details>
+    </div>
     <div class="reward"><div class="ic">🕰️</div><h4>Pontos de restauração</h4><p>O app guarda automaticamente uma cópia por dia dos últimos 7 dias neste dispositivo.</p>
       <div id="snapshots" class="list"><span class="muted">Carregando…</span></div></div>
-    <div class="reward"><div class="ic">🔒</div><h4>Privacidade</h4><p>Seus dados ficam somente neste dispositivo (IndexedDB). O app não usa servidores, rastreadores ou bibliotecas externas,
-      e não envia nada pela internet. Para usar em outro aparelho, exporte e importe um backup.</p>
+    <div class="reward"><div class="ic">🔒</div><h4>Privacidade</h4><p>Seus dados ficam neste dispositivo (IndexedDB) e nas cópias que você salvar no seu iCloud. O app não usa servidores, rastreadores ou bibliotecas externas,
+      e não envia nada pela internet. Para usar em outro aparelho, restaure o backup do iCloud nele.</p>
       <div class="tl-sub" id="persist">Verificando armazenamento persistente…</div></div>
-    <div class="reward" style="border-color:rgba(255,92,122,.4)"><div class="ic">⚠️</div><h4>Zona de perigo</h4><p>Apaga todos os dados deste dispositivo, incluindo pontos de restauração. Exporte um backup antes.</p>
+    <div class="reward" style="border-color:rgba(255,92,122,.4)"><div class="ic">⚠️</div><h4>Zona de perigo</h4><p>Apaga todos os dados deste dispositivo, incluindo pontos de restauração. Salve um backup no iCloud antes.</p>
       <div><button class="btn sm danger" data-action="wipe">${icon('trash')} Apagar todos os dados</button></div></div>
   </div>`;
 }
@@ -283,14 +304,7 @@ const actions = {
     openModal('Colar eventos JSON', `<form data-form="paste-json"><label class="field">Conteúdo JSON<textarea name="json" rows="8" placeholder='{"source":"central","events":[{"id":"1","date":"${c.today}","activity":"estudo","title":"Revisão de SQL"}]}'></textarea></label>
       <div class="modal-actions"><button type="button" class="btn ghost" data-action="modal-close">Cancelar</button><button class="btn primary">Importar</button></div></form>`);
   },
-  'backup-export': async (el, c) => {
-    const pw = await promptDialog('Exportar backup', 'Senha para criptografar (deixe vazio para JSON simples)', { type: 'password', ok: 'Exportar' });
-    if (pw === null) return;
-    store.mutate((s) => { s.meta.backups = (s.meta.backups || 0) + 1; });
-    const text = await buildBackup(store.state, pw);
-    download(`system-ascension-backup-${c.today}${pw ? '-protegido' : ''}.json`, text);
-    run(() => null, null, { quiet: true }); // avalia conquistas (Guardião dos Registros)
-  },
+  'cloud-save': () => saveBackupToCloud(),
   'backup-import': async () => {
     const f = await pickFile('.json,application/json');
     if (!f) return;
@@ -340,6 +354,15 @@ const changes = {
 
 const forms = {
   ...healthForms,
+  'backup-settings': (data) => {
+    run((s) => {
+      const b = s.settings.backup;
+      b.reminderDays = Math.max(0, Math.min(90, Number(data.reminderDays) || 0));
+      if (data.clearPassword) b.password = '';
+      else if (data.password) b.password = String(data.password).slice(0, 200);
+    }, null, { quiet: true });
+    toast(data.clearPassword ? 'Senha removida.' : data.password ? 'Senha dos backups definida. Anote-a em lugar seguro.' : 'Preferências salvas.');
+  },
   'health-settings': (data) => {
     if (run((s) => E.updateHealthSettings(s, { ...data, autoConfirm: !!data.autoConfirm }), null, { quiet: true })) toast('Metas do Saúde salvas.');
   },

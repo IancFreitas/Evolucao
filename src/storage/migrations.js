@@ -1,6 +1,6 @@
 // Migrações de esquema: garantem que dados antigos ou importados tenham todos os campos atuais.
 import {
-  DEFAULT_ACTIVITIES, DEFAULT_HEALTH, DEFAULT_NOTIFICATIONS, DEFAULT_REWARDS, DEFAULT_RULES, SCHEMA_VERSION,
+  DEFAULT_ACTIVITIES, DEFAULT_BACKUP, DEFAULT_HEALTH, DEFAULT_NOTIFICATIONS, DEFAULT_REWARDS, DEFAULT_RULES, SCHEMA_VERSION,
 } from '../core/defaults.js';
 
 // Atividades que já existiam na primeira versão; as demais do padrão são adicionadas por migração.
@@ -24,12 +24,13 @@ export function migrate(raw) {
   s.settings = isObj(s.settings) ? s.settings : {};
   s.settings.rules = fill(isObj(s.settings.rules) ? s.settings.rules : {}, DEFAULT_RULES);
   s.settings.notifications = fill(isObj(s.settings.notifications) ? s.settings.notifications : {}, DEFAULT_NOTIFICATIONS);
+  s.settings.backup = fill(isObj(s.settings.backup) ? s.settings.backup : {}, DEFAULT_BACKUP);
   s.settings.health = fill(isObj(s.settings.health) ? s.settings.health : {}, DEFAULT_HEALTH);
   if (!Array.isArray(s.settings.activities) || !s.settings.activities.length) s.settings.activities = structuredClone(DEFAULT_ACTIVITIES);
   for (const k of ['missions', 'log', 'inventory', 'pending', 'inbox']) if (!Array.isArray(s[k])) s[k] = [];
   if (!Array.isArray(s.rewards)) s.rewards = structuredClone(DEFAULT_REWARDS);
   for (const k of ['days', 'achievements']) if (!isObj(s[k])) s[k] = {};
-  s.meta = fill(isObj(s.meta) ? s.meta : {}, { backups: 0, lastNotified: {}, addedActivities: [] });
+  s.meta = fill(isObj(s.meta) ? s.meta : {}, { backups: 0, lastBackupAt: null, lastNotified: {}, addedActivities: [] });
   // Atividades novas do padrão são adicionadas uma única vez (se você excluir, não voltam).
   for (const a of DEFAULT_ACTIVITIES) {
     if (s.meta.addedActivities.includes(a.key) || V1_ACTIVITY_KEYS.includes(a.key)) continue;

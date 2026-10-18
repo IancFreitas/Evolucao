@@ -75,6 +75,14 @@ export const DEFAULT_NOTIFICATIONS = {
   levelUp: true,
   achievement: true,
   attribute: true,
+  backup: true,
+};
+
+export const DEFAULT_BACKUP = {
+  // lembrar de salvar no iCloud a cada N dias (0 = nunca lembrar)
+  reminderDays: 7,
+  // senha opcional, guardada só neste aparelho, usada para criptografar os backups
+  password: '',
 };
 
 // Metas usadas para transformar dados do app Saúde em registros (nada pontua abaixo da meta).
@@ -120,6 +128,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
       activities: structuredClone(DEFAULT_ACTIVITIES),
       notifications: structuredClone(DEFAULT_NOTIFICATIONS),
       health: structuredClone(DEFAULT_HEALTH),
+      backup: structuredClone(DEFAULT_BACKUP),
     },
     missions: withExamples ? exampleMissions(today) : [],
     log: [],
@@ -129,7 +138,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
     inventory: [],
     pending: [],
     inbox: [],
-    meta: { backups: 0, lastNotified: {}, addedActivities: ['passos'] },
+    meta: { backups: 0, lastBackupAt: null, lastNotified: {}, addedActivities: ['passos'] },
   };
 }
 

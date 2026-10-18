@@ -8,6 +8,7 @@ import { focusAreas } from '../../core/analytics.js';
 import { esc, fmt, icon } from '../dom.js';
 import { run, store } from '../app.js';
 import { missionRow } from './missions.js';
+import { backupOverdue, backupStatusText, saveBackupToCloud } from '../cloud.js';
 
 function hero(c) {
   const { d, state } = c;
@@ -79,6 +80,10 @@ function banners(c) {
     out.push(`<div class="notice ok">${DAY_STATUSES[status].icon} <b>${DAY_STATUSES[status].label}.</b> ${DAY_STATUSES[status].desc} Nenhuma missão é cobrada hoje.</div>`);
   }
   if (status === 'hard') out.push(`<div class="notice warn">🌧️ <b>Modo dia difícil ativo.</b> As missões mostram versões leves. Fazer pouco ainda é fazer.</div>`);
+  if (backupOverdue(state)) {
+    out.push(`<div class="notice">☁️ <b>Hora de salvar uma cópia no iCloud.</b> ${backupStatusText(state)} Se o iPhone for perdido ou o app apagado, é ela que traz tudo de volta.
+      <div class="row wrap mt-s"><button class="btn sm primary" data-action="cloud-save">${icon('upload')} Salvar no iCloud</button></div></div>`);
+  }
   if (state.pending.length) {
     out.push(`<div class="notice">📥 <b>${state.pending.length} registro(s) importado(s)</b> aguardando sua confirmação. <button class="btn sm" data-nav="log" data-scroll="pending">Revisar</button></div>`);
   }
@@ -122,6 +127,7 @@ function render(c) {
 }
 
 const actions = {
+  'cloud-save': () => saveBackupToCloud(),
   'day-hard': () => run((s) => E.setDayStatus(s, E.todayKey(s), 'hard')),
   'quick-log': (el) => run((s) => E.logActivity(s, el.dataset.key), el),
   'inbox-read': () => store.mutate((s) => { s.inbox.forEach((n) => { n.read = true; }); }),

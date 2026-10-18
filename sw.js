@@ -1,5 +1,5 @@
 // Service worker: funcionamento offline, lembretes periódicos e clique em notificações.
-const VERSION = 'sa-v3';
+const VERSION = 'sa-v4';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png',
@@ -9,7 +9,7 @@ const SHELL = [
   'src/core/dates.js', 'src/core/defaults.js', 'src/core/levels.js', 'src/core/ledger.js', 'src/core/missions.js',
   'src/core/streaks.js', 'src/core/achievements.js', 'src/core/analytics.js', 'src/core/engine.js',
   'src/storage/db.js', 'src/storage/backup.js', 'src/storage/migrations.js',
-  'src/services/notifications.js', 'src/services/integrations.js', 'src/services/health.js', 'src/ui/health.js',
+  'src/services/notifications.js', 'src/services/integrations.js', 'src/services/health.js', 'src/ui/health.js', 'src/ui/cloud.js',
 ];
 
 self.addEventListener('install', (e) => {
