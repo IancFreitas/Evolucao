@@ -8,6 +8,7 @@ import { migrate } from '../storage/migrations.js';
 import { parseBackup, isEncrypted } from '../storage/backup.js';
 import { healthFromHash } from '../services/health.js';
 import { importHealthText } from './health.js';
+import { awakenActions, awakenForms, prepareWizard, renderWizard, wizard } from './awaken.js';
 import { backupOverdue, daysSinceBackup } from './cloud.js';
 import { dueReminders, registerPeriodicSync, systemNotify } from '../services/notifications.js';
 import { closeModal, esc, floatXp, fmt, icon, initTooltips, logo, modalOpen, pickFile, promptDialog, readFile, toast } from './dom.js';
@@ -105,10 +106,15 @@ function handleEvents(events, result, origin, quiet) {
       inbox.push(['achievement', `Conquista: ${a.name}`, a.title ? `Título desbloqueado: ${a.title}` : a.desc]);
     }
     if (e.type === 'levelUp') {
-      showLevelUp(e.level, events.find((x) => x.type === 'classUp')?.cls);
+      showLevelUp(e.level, events.find((x) => x.type === 'tierUp')?.cls);
       inbox.push(['levelUp', `Nível ${e.level} alcançado`, 'Você subiu de nível no System Ascension.']);
     }
-    if (e.type === 'classUp') inbox.push(['levelUp', `Nova classe: ${e.cls.name}`, e.cls.perkText.join(' · ')]);
+    if (e.type === 'tierUp') inbox.push(['levelUp', `Novo grau: ${e.cls.tier.name}`, e.cls.tier.perkText.join(' · ')]);
+    if (e.type === 'classChange') {
+      const msg = e.from.archetype ? `Sua classe mudou: ${e.from.name} → ${e.cls.name}` : `Classe despertada: ${e.cls.name}`;
+      toast(`⚜ <b>${esc(msg)}</b><br><span class="muted">${esc(e.cls.archetype?.desc || '')}</span>`, 'gold', 6000);
+      inbox.push(['levelUp', msg, e.cls.archetype?.desc || 'Sua classe reflete os atributos que você mais desenvolve.']);
+    }
   }
   if (result?.kind === 'mission' && result.missionType !== 'daily') {
     inbox.push(['goal', 'Objetivo concluído', result.title]);
@@ -130,7 +136,7 @@ function showLevelUp(level, cls) {
   el.setAttribute('role', 'alertdialog');
   el.innerHTML = `<div class="panel box"><div class="ttl">[ SISTEMA ]</div><div class="hud">Nível alcançado</div>
     <div class="big">${level}</div>
-    ${cls ? `<p style="margin:14px 0 0;font-size:18px">Nova classe: <b style="color:var(--accent)">${esc(cls.name)}</b></p><p class="muted" style="margin:6px 0 0">${cls.perkText.map(esc).join(' · ')}</p>` : '<p class="muted" style="margin:14px 0 0">Sua evolução foi registrada. Continue no seu ritmo.</p>'}
+    ${cls ? `<p style="margin:14px 0 0;font-size:18px">Novo grau: <b style="color:var(--accent)">${esc(cls.tier.name)}</b></p><p class="muted" style="margin:6px 0 0">${cls.tier.perkText.map(esc).join(' · ')}</p>` : '<p class="muted" style="margin:14px 0 0">Sua evolução foi registrada. Continue no seu ritmo.</p>'}
     <p class="hud" style="margin-top:18px">Toque para continuar</p></div>`;
   el.addEventListener('click', () => el.remove());
   document.body.appendChild(el);
@@ -156,7 +162,11 @@ function applyTheme(state) {
 }
 
 export function render() {
-  if (!store.state) return renderOnboarding();
+  if (!store.state || wizard.active) {
+    if (!wizard.active) prepareWizard('new');
+    root().innerHTML = renderWizard();
+    return;
+  }
   const c = ctx();
   applyTheme(c.state);
   const view = VIEWS.find((v) => v.id === ui.view) || statusView;
@@ -180,20 +190,6 @@ export function render() {
   view.mounted?.(c);
 }
 
-function renderOnboarding() {
-  root().innerHTML = `<div class="onboard"><form class="panel" data-form="onboard">
-    <div class="row">${logo()}<span class="typing">[ SISTEMA ] Um novo jogador foi detectado.</span></div>
-    <h1>Bem-vindo ao System Ascension</h1>
-    <p class="muted">Seu progresso real vira evolução de personagem. Hábitos, estudos, treinos e descanso geram XP,
-    atributos e conquistas. Os dados ficam salvos apenas neste dispositivo.</p>
-    <div class="stack mt">
-      <label class="field">Nome do personagem<input name="name" required maxlength="40" placeholder="Seu nome ou apelido" autocomplete="nickname"></label>
-      <label class="check"><input type="checkbox" name="examples" checked> Começar com missões de exemplo (editáveis)</label>
-      <button class="btn primary">${icon('sword')} Aceitar e despertar</button>
-      <button type="button" class="btn ghost" data-action="onboard-import">${icon('upload')} Restaurar backup</button>
-    </div></form></div>`;
-}
-
 /* ------------------------------ Eventos ------------------------------ */
 
 function currentView() {
@@ -211,6 +207,7 @@ export function navigate(id, { scroll } = {}) {
 }
 
 const globalActions = {
+  ...awakenActions,
   'modal-close': () => closeModal(),
   more: () => { ui.moreOpen = !ui.moreOpen; render(); },
   install: async () => {
@@ -229,6 +226,7 @@ const globalActions = {
       const text = await readFile(file);
       const pw = isEncrypted(text) ? await promptDialog('Backup protegido', 'Senha do backup', { type: 'password' }) : '';
       const data = await parseBackup(text, pw || '');
+      wizard.active = false;
       store.set(data);
       navigate('status');
       toast('Backup restaurado. Bem-vindo de volta!', 'gold');
@@ -236,15 +234,7 @@ const globalActions = {
   },
 };
 
-const globalForms = {
-  onboard: (data) => {
-    const s = createInitialState({ name: data.name || 'Jogador', withExamples: !!data.examples, today: E.todayKey({ settings: { rules: { dayStartHour: 4 } } }) });
-    store.set(s);
-    requestPersistence();
-    navigate('status');
-    toast('[ SISTEMA ] Jogador registrado. Sua jornada começa agora.', 'xp', 4500);
-  },
-};
+const globalForms = { ...awakenForms };
 
 function formData(form) {
   const fd = new FormData(form);

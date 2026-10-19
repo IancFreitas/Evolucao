@@ -39,9 +39,12 @@ export const DEFAULT_ACTIVITIES = [
 ];
 
 export const DEFAULT_RULES = {
-  // Curva de nível: XP para sair do nível N = levelBase * N ^ levelExponent
-  levelBase: 100,
-  levelExponent: 1.25,
+  // Dificuldade (preset de levels.js) e a curva correspondente:
+  // XP para sair do nível N = levelBase * N ^ levelExponent; nível de atributo = raiz(pontos / attrDivisor) + 1
+  difficulty: 'dificil',
+  levelBase: 250,
+  levelExponent: 1.2,
+  attrDivisor: 8,
   // Bônus por completar todas as missões essenciais do dia
   dailyBonus: 50,
   // Fator aplicado às versões leves das missões e ao bônus em dias difíceis

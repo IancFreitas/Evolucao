@@ -24,12 +24,13 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Área | Funcionalidades |
 | --- | --- |
 | Personagem | Nome, classe, título ativo, nível, barra de XP, moedas, sequência, escudos |
+| Personalização | Entrevista "Despertar" ao entrar: história de vida, rotina, prioridades e focos por área, metas, limitações e recompensas viram missões, atividades, Boss e loja sob medida. Opção de ser entrevistado pelo Claude e colar o perfil |
 | Atributos | STR, END, INT, WIS, DISC, CHA, VIT, que evoluem **apenas** por ações registradas |
 | XP | Valores configuráveis por atividade e por tipo de missão, curva progressiva editável, bônus diário |
 | Anti-exploração | Conclusão única por período, retornos decrescentes, limite diário, intervalo mínimo, sem registros futuros, retroativos limitados, chaves únicas no livro-razão |
 | Missões | Diárias (dias da semana, essenciais, versão leve), semanais, principais (progresso + marcos 25/50/75%), especiais, Boss Battles (etapas e HP). Criar, editar, adiar, pausar, concluir, desfazer, excluir |
 | Dungeons | 42 dungeons (7 áreas × ranks E→S) com requisitos medidos pelos registros, chefe final com prazo, portão fechado por 48h (configurável) após derrota sem perder os requisitos, rank por área e rank geral (4 áreas no mesmo rank) |
-| Classes | Aprendiz → Explorador → Estrategista → Especialista → Mestre → Ascendente, com requisitos de nível e equilíbrio e benefícios (temas, escudos, bônus de moedas) |
+| Classes | Nascem dos atributos mais desenvolvidos e mudam com eles: 7 classes puras (ex.: Arcanista), 21 híbridas (ex.: Sábio = INT+WIS) e a rara Harmonista (tudo equilibrado). O nível define o grau (Iniciante → Ascendente) e os benefícios |
 | Conquistas | 33 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |
 | Análise | XP diário/semanal/mensal, radar e evolução dos atributos, hábitos por dia, mapa de consistência, missões principais, histórico de níveis, áreas de dedicação e de atenção, recordes |
@@ -52,7 +53,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Completar as missões essenciais do dia | +50 de bônus |
 
 Tudo é editável em **Ajustes → Regras de pontuação** e **Ajustes → Atividades**.
-Com ~200 XP/dia, o nível 10 chega em cerca de 1 mês e o nível 50 em pouco mais de 2 anos.
+Três dificuldades: **Casual**, **Difícil** (padrão) e **Monarca**. No Difícil, com ~250 XP/dia, o nível 10 chega em ~2 meses e o nível 45 (exigido pelo Rank S) em ~5 anos; atributos também evoluem mais devagar.
 
 ## O que depende de integrações adicionais
 

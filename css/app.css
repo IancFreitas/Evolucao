@@ -462,3 +462,13 @@ details.box summary { cursor: pointer; font-weight: 650; }
 .boss-box.active { border-style: solid; background: rgba(255, 45, 85, 0.1); animation: bossGlow 2.4s ease-in-out infinite; }
 @keyframes bossGlow { 50% { box-shadow: 0 0 24px -6px #ff2d55; } }
 .btn.pulse { animation: bossGlow 1.8s ease-in-out infinite; }
+
+/* ---------- Despertar (personalização) ---------- */
+.onboard .panel.wizard { width: min(680px, 100%); }
+.wz-h { font-size: 20px; margin: 4px 0 2px; }
+.wz-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); border-left: 3px solid var(--c); background: rgba(10, 16, 40, 0.45); }
+.wz-goal { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(10, 16, 40, 0.45); }
+.ds:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: 0 0 20px -8px var(--accent); }
+.ds:has(input:focus-visible) { outline: 2px solid var(--accent); }
+.chip:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.chip input[type='checkbox'] { width: 14px; height: 14px; }

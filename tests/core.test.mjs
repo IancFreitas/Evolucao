@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createInitialState } from '../src/core/defaults.js';
 import * as E from '../src/core/engine.js';
 import { addDays, weekKey } from '../src/core/dates.js';
-import { levelFromXp, totalXpForLevel, classIndexFor } from '../src/core/levels.js';
+import { levelFromXp, totalXpForLevel, archetypeFor, classFor, DIFFICULTY } from '../src/core/levels.js';
+import { buildPlan, storyHints, parseClaudeProfile } from '../src/core/personalize.js';
 import { migrate } from '../src/storage/migrations.js';
 
 // Relógio controlado: 2026-10-14 (quarta-feira) às 10h.
@@ -165,11 +166,68 @@ test('importação passa pela fila de confirmação e não duplica', () => {
   assert.equal(E.addPending(s, items), 0);
 });
 
-test('classes exigem nível e equilíbrio', () => {
-  const low = { STR: 1, END: 1, INT: 1, WIS: 1, DISC: 1, CHA: 1, VIT: 1 };
-  assert.equal(classIndexFor(4, low), 0);
-  assert.equal(classIndexFor(12, low), 1);
-  assert.equal(classIndexFor(12, { ...low, INT: 5, DISC: 5 }), 2);
+test('classe nasce dos atributos desenvolvidos', () => {
+  const pts = (o) => ({ STR: 0, END: 0, INT: 0, WIS: 0, DISC: 0, CHA: 0, VIT: 0, ...o });
+  const lv = (p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Math.floor(Math.sqrt(v / 8)) + 1]));
+  assert.equal(archetypeFor(pts({ INT: 20 }), lv(pts({ INT: 20 }))), null, 'sem classe antes do nível 3');
+  assert.equal(archetypeFor(pts({ INT: 100 }), lv(pts({ INT: 100 }))).name, 'Arcanista');
+  assert.equal(archetypeFor(pts({ INT: 100, WIS: 80 }), lv(pts({ INT: 100, WIS: 80 }))).name, 'Sábio');
+  assert.equal(archetypeFor(pts({ WIS: 80, INT: 100 }), lv(pts({ WIS: 80, INT: 100 }))).name, 'Sábio', 'ordem não importa');
+  const bal = pts({ STR: 200, END: 190, INT: 180, WIS: 170, DISC: 200, CHA: 160, VIT: 175 });
+  assert.equal(archetypeFor(bal, lv(bal)).name, 'Harmonista');
+  const c = classFor(25, pts({ STR: 300 }), lv(pts({ STR: 300 })));
+  assert.equal(c.label, 'Guerreiro · Elite');
+});
+
+test('modo Difícil torna os níveis bem mais lentos', () => {
+  const casual = totalXpForLevel(45, DIFFICULTY.casual);
+  const dificil = totalXpForLevel(45, DIFFICULTY.dificil);
+  const monarca = totalXpForLevel(45, DIFFICULTY.monarca);
+  assert.ok(dificil > casual * 2 && monarca > dificil * 1.8, `${casual} < ${dificil} < ${monarca}`);
+  const days = dificil / 250;
+  assert.ok(days > 1500 && days < 2200, `Difícil: nível 45 em ${Math.round(days)} dias a 250 XP/dia`);
+});
+
+test('personalização gera plano a partir da vida contada', () => {
+  const story = 'Sou dev, trabalho com software, quero voltar pra academia e melhorar meu inglês. Tenho dívidas e durmo mal.';
+  const h = storyHints(story);
+  assert.equal(h.focus.STR, 'musculação');
+  assert.ok(h.finance);
+  const plan = buildPlan({
+    name: 'Ian', occupation: 'trabalho', wake: '06:30', sleep: '23:00', dailyMinutes: 60, trainingDays: [1, 3, 5], story,
+    priorities: { STR: 'alta', INT: 'alta', VIT: 'alta', CHA: 'baixa' }, focus: { INT: 'inglês', STR: 'musculação' },
+    goals: [{ title: 'Ser fluente em inglês', area: 'INT', months: 12 }, { title: 'Quitar dívidas', area: 'WIS', months: 8 }],
+    limitations: 'dor no joelho', rewards: ['jogo', 'livro'], difficulty: 'monarca',
+  }, '2026-10-19');
+  assert.ok(plan.activities.some((a) => a.name === 'Inglês' && a.attrs.INT === 3));
+  const titles = plan.missions.map((m) => m.title);
+  assert.ok(titles.includes('Estudo focado: Inglês'));
+  assert.ok(titles.includes('Organização financeira da semana'), 'finanças detectadas na história');
+  assert.ok(!titles.some((t) => t.startsWith('Conexão')), 'prioridade baixa não gera diária');
+  assert.equal(plan.missions.find((m) => m.type === 'boss').title, 'Ser fluente em inglês');
+  assert.equal(plan.missions.filter((m) => m.type === 'daily' && m.essential).length, 4);
+  assert.match(plan.missions.find((m) => m.title.startsWith('Treino')).description, /joelho/);
+  assert.equal(plan.health.sleepGoal, 7.5);
+  assert.equal(plan.rules.difficulty, 'monarca');
+  assert.deepEqual(plan.rewards.map((r) => r.id), ['rw-jogo', 'rw-livro']);
+
+  const s = fresh(true);
+  const m0 = s.missions[0];
+  E.completeMission(s, s.missions.find((m) => m.type === 'weekly').id);
+  E.applyPersonalization(s, plan);
+  assert.equal(s.settings.rules.levelBase, DIFFICULTY.monarca.levelBase);
+  assert.ok(!s.missions.includes(m0) && !s.missions.some((m) => m.id === m0.id), 'missões de exemplo sem histórico saem');
+  assert.equal(s.missions.filter((m) => m.status === 'archived').length, 1, 'missão com histórico fica pausada');
+  assert.ok(E.derive(s).totalXp > 0, 'XP conquistado é mantido');
+});
+
+test('perfil vindo do Claude é validado', () => {
+  const a = parseClaudeProfile('Aqui está: ```json\n{"ascension_profile":{"name":"Ian","priorities":{"STR":"alta","X":"alta"},"goals":[{"title":"Correr 10 km","area":"END","months":"4"}],"difficulty":"impossivel"}}\n```');
+  assert.equal(a.name, 'Ian');
+  assert.equal(a.priorities.STR, 'alta');
+  assert.equal(a.goals[0].months, 4);
+  assert.equal(a.difficulty, 'dificil');
+  assert.throws(() => parseClaudeProfile('sem json'), /JSON/);
 });
 
 test('migração preenche campos ausentes de backups antigos', () => {
@@ -177,6 +235,12 @@ test('migração preenche campos ausentes de backups antigos', () => {
   assert.ok(s.settings.rules.levelBase);
   assert.ok(Array.isArray(s.missions));
   assert.ok(s.settings.notifications.daily);
+  const old = migrate({ version: 1, profile: { name: 'Ian' }, settings: { rules: { levelBase: 100, levelExponent: 1.25 } }, log: [] });
+  assert.equal(old.settings.rules.difficulty, 'dificil', 'curva original vira Difícil');
+  assert.equal(old.settings.rules.attrDivisor, 8);
+  const custom = migrate({ version: 1, settings: { rules: { levelBase: 150, levelExponent: 1.4 } }, log: [] });
+  assert.equal(custom.settings.rules.difficulty, 'custom', 'curva personalizada é respeitada');
+  assert.equal(custom.settings.rules.levelBase, 150);
 });
 
 import { csvToItems, icsToItems, jsonToItems } from '../src/services/integrations.js';

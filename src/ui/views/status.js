@@ -1,7 +1,7 @@
 import * as E from '../../core/engine.js';
 import { ATTRIBUTES, DAY_STATUSES } from '../../core/defaults.js';
 import { formatDay, formatTime } from '../../core/dates.js';
-import { CLASSES } from '../../core/levels.js';
+import { TIERS, CLASS_MIN_ATTR_LEVEL } from '../../core/levels.js';
 import { completionKey, essentialsFor, isPostponed, isScheduled } from '../../core/missions.js';
 import { inactiveGapBefore } from '../../core/streaks.js';
 import { focusAreas } from '../../core/analytics.js';
@@ -14,7 +14,7 @@ import { backupOverdue, backupStatusText, saveBackupToCloud } from '../cloud.js'
 function hero(c) {
   const { d, state } = c;
   const title = state.profile.activeTitle || 'Desperto';
-  const next = CLASSES[d.classIndex + 1];
+  const next = TIERS[d.cls.tierIndex + 1];
   return `<div class="panel hero">
     <div class="avatar" aria-label="Nível ${d.level.level}"><div class="lv"><small>NÍVEL</small>${d.level.level}</div></div>
     <div style="min-width:0">
@@ -22,7 +22,7 @@ function hero(c) {
       <div class="hero-name">${esc(state.profile.name)}</div>
       <div class="hero-title">« ${esc(title)} »</div>
       <div class="chips">
-        <span class="chip accent">⚜ Classe: ${esc(d.cls.name)}</span>
+        <span class="chip accent" data-tip="${esc(d.cls.archetype ? d.cls.archetype.desc : `Sua classe surge quando um atributo chega ao nível ${CLASS_MIN_ATTR_LEVEL}.`)}">⚜ ${esc(d.cls.label)}</span>
         <button class="chip" data-nav="dungeons" style="cursor:pointer">🚪 ${hunterRank(state) >= 0 ? `Rank ${RANKS[hunterRank(state)]}` : 'Sem rank'}</button>
         <span class="chip" data-tip="Sequência atual · recorde ${d.streak.best}">🔥 ${d.streak.current} dia(s)</span>
         <span class="chip gold num">◈ ${fmt(d.coins)} moedas</span>
@@ -30,7 +30,7 @@ function hero(c) {
       </div>
       <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${d.level.needed}" aria-valuenow="${d.level.into}" aria-label="Experiência"><i style="--w:${(d.level.progress * 100).toFixed(1)}%"></i></div>
       <div class="xp-meta"><span>XP ${fmt(d.level.into)} / ${fmt(d.level.needed)}</span><span>Total ${fmt(d.totalXp)}</span></div>
-      ${next ? `<div class="tl-sub mt-s">Próxima classe: <b>${esc(next.name)}</b> (${esc(next.reqText)})</div>` : '<div class="tl-sub mt-s">Classe máxima alcançada.</div>'}
+      ${next ? `<div class="tl-sub mt-s">Próximo grau: <b>${esc(next.name)}</b> no nível ${next.minLevel} · a classe muda conforme os atributos que você mais desenvolve</div>` : '<div class="tl-sub mt-s">Grau máximo alcançado.</div>'}
     </div></div>`;
 }
 
@@ -82,6 +82,10 @@ function banners(c) {
     out.push(`<div class="notice ok">${DAY_STATUSES[status].icon} <b>${DAY_STATUSES[status].label}.</b> ${DAY_STATUSES[status].desc} Nenhuma missão é cobrada hoje.</div>`);
   }
   if (status === 'hard') out.push(`<div class="notice warn">🌧️ <b>Modo dia difícil ativo.</b> As missões mostram versões leves. Fazer pouco ainda é fazer.</div>`);
+  if (!state.profile.personalizedAt) {
+    out.push(`<div class="notice" style="border-color:var(--accent)">⚔️ <b>O Sistema ainda não conhece você.</b> Conte sobre a sua vida para receber missões, metas e recompensas feitas sob medida.
+      <div class="row wrap mt-s"><button class="btn sm primary" data-action="awaken-start">Personalizar agora</button></div></div>`);
+  }
   if (backupOverdue(state)) {
     out.push(`<div class="notice">☁️ <b>Hora de salvar uma cópia no iCloud.</b> ${backupStatusText(state)} Se o iPhone for perdido ou o app apagado, é ela que traz tudo de volta.
       <div class="row wrap mt-s"><button class="btn sm primary" data-action="cloud-save">${icon('upload')} Salvar no iCloud</button></div></div>`);

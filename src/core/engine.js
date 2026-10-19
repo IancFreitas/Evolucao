@@ -3,7 +3,7 @@
 // Não há acesso a DOM nem a armazenamento aqui.
 import { addDays, dayKey, diffDays, weekKey } from './dates.js';
 import { ATTR_KEYS, DAY_STATUSES, DEFAULT_RULES, uid } from './defaults.js';
-import { CLASSES, THEMES, attrLevel, classIndexFor, levelFromXp, perksFor } from './levels.js';
+import { DIFFICULTY, THEMES, attrLevel, classFor, levelFromXp, perksFor } from './levels.js';
 import { EFFORT_KINDS, RuleError, attrsFor, award, coinsFor, hasKey, revokeId, revokeKey } from './ledger.js';
 import {
   BOSS_STAGE_SHARE, MAIN_MILESTONES, MAIN_MILESTONE_SHARE, activityOf, completionKey, essentialsFor,
@@ -36,13 +36,13 @@ export function derive(state, today = todayKey(state)) {
     if (e.key) keys.add(e.key);
   }
   const level = levelFromXp(totalXp, rules);
-  const attrs = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrLevel(attrPoints[k])]));
+  const attrs = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrLevel(attrPoints[k], rules.attrDivisor || 4)]));
   const attrLevels = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrs[k].level]));
-  const classIndex = classIndexFor(level.level, attrLevels);
-  const perks = perksFor(classIndex);
+  const cls = classFor(level.level, attrPoints, attrLevels);
+  const perks = perksFor(cls.tierIndex);
   const active = effortDays(state);
   const streak = computeStreak(state, today, rules.shieldsPerWeek + perks.shieldsBonus, active);
-  return { today, totalXp, coins, attrPoints, attrs, attrLevels, level, classIndex, cls: CLASSES[classIndex], perks, streak, keys, active };
+  return { today, totalXp, coins, attrPoints, attrs, attrLevels, level, cls, perks, streak, keys, active };
 }
 
 export function computeStats(state, d = derive(state)) {
@@ -105,7 +105,8 @@ export function act(state, mutator) {
   const dcoins = after.coins - before.coins;
   if (dcoins) events.push({ type: 'coins', amount: dcoins });
   if (after.level.level > before.level.level) events.push({ type: 'levelUp', level: after.level.level });
-  if (after.classIndex > before.classIndex) events.push({ type: 'classUp', cls: after.cls });
+  if (after.cls.name !== before.cls.name) events.push({ type: 'classChange', from: before.cls, cls: after.cls });
+  if (after.cls.tierIndex > before.cls.tierIndex) events.push({ type: 'tierUp', cls: after.cls });
   for (const k of ATTR_KEYS) {
     if (after.attrLevels[k] > before.attrLevels[k]) events.push({ type: 'attrUp', attr: k, level: after.attrLevels[k] });
   }
@@ -668,6 +669,35 @@ export function expireDungeons(state) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Personalização.                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Aplica o plano gerado por buildPlan. Com `replace`, missões sem histórico são removidas e as que
+ * já renderam XP são pausadas (o histórico nunca é apagado). Atributos e XP não são alterados.
+ */
+export function applyPersonalization(state, plan, { replace = true } = {}, today = todayKey(state)) {
+  state.profile.name = plan.profile.name || state.profile.name;
+  state.profile.life = { ...plan.profile, updatedAt: clock.now() };
+  state.profile.personalizedAt = clock.now();
+  updateRules(state, { difficulty: plan.rules.difficulty, dayStartHour: plan.rules.dayStartHour });
+  state.settings.health.sleepGoal = plan.health.sleepGoal;
+  for (const a of plan.activities) {
+    const exists = state.settings.activities.find((x) => x.key === a.key);
+    saveActivity(state, { ...a, originalKey: exists ? a.key : undefined });
+  }
+  if (replace) {
+    const withHistory = new Set(state.log.filter((e) => e.missionId).map((e) => e.missionId));
+    state.missions = state.missions.filter((m) => withHistory.has(m.id));
+    for (const m of state.missions) if (m.status === 'active') m.status = 'archived';
+    state.rewards = [];
+  }
+  for (const m of plan.missions) saveMission(state, { ...m, startDate: today }, today);
+  for (const r of plan.rewards) if (!state.rewards.some((x) => x.id === r.id)) saveReward(state, r);
+  return { missions: plan.missions.length, activities: plan.activities.length, rewards: plan.rewards.length };
+}
+
+/* ------------------------------------------------------------------ */
 /* Perfil e regras.                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -694,8 +724,16 @@ const clampNum = (v, min, max, fallback) => {
 export function updateRules(state, patch) {
   const r = state.settings.rules;
   const d = DEFAULT_RULES;
-  r.levelBase = clampNum(patch.levelBase ?? r.levelBase, 20, 2000, d.levelBase);
-  r.levelExponent = clampNum(patch.levelExponent ?? r.levelExponent, 1, 2.5, d.levelExponent);
+  if (patch.difficulty && (DIFFICULTY[patch.difficulty] || patch.difficulty === 'custom')) r.difficulty = patch.difficulty;
+  const preset = DIFFICULTY[r.difficulty];
+  if (preset && patch.difficulty) {
+    Object.assign(r, { levelBase: preset.levelBase, levelExponent: preset.levelExponent, attrDivisor: preset.attrDivisor });
+  } else {
+    r.levelBase = clampNum(patch.levelBase ?? r.levelBase, 20, 2000, d.levelBase);
+    r.levelExponent = clampNum(patch.levelExponent ?? r.levelExponent, 0.8, 2.5, d.levelExponent);
+    r.attrDivisor = clampNum(patch.attrDivisor ?? r.attrDivisor, 2, 30, d.attrDivisor);
+    if (preset && (r.levelBase !== preset.levelBase || r.levelExponent !== preset.levelExponent || r.attrDivisor !== preset.attrDivisor)) r.difficulty = 'custom';
+  }
   r.dailyBonus = clampNum(patch.dailyBonus ?? r.dailyBonus, 0, 1000, d.dailyBonus);
   r.lightFactor = clampNum(patch.lightFactor ?? r.lightFactor, 0.1, 1, d.lightFactor);
   r.coinRate = clampNum(patch.coinRate ?? r.coinRate, 0, 2, d.coinRate);

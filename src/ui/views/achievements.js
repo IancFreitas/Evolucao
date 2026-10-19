@@ -1,6 +1,7 @@
 import * as E from '../../core/engine.js';
 import { ACHIEVEMENTS, RARITY, achievementProgress } from '../../core/achievements.js';
-import { CLASSES } from '../../core/levels.js';
+import { BALANCED_CLASS, CLASS_MIN_ATTR_LEVEL, PAIR_CLASSES, SINGLE_CLASSES, TIERS } from '../../core/levels.js';
+import { ATTR_KEYS, attrInfo } from '../../core/defaults.js';
 import { dayKey, formatDay } from '../../core/dates.js';
 import { esc, fmt } from '../dom.js';
 import { run, ui } from '../app.js';
@@ -8,11 +9,27 @@ import { run, ui } from '../app.js';
 const FILTERS = { all: 'Todas', unlocked: 'Desbloqueadas', locked: 'Bloqueadas' };
 
 function classesPanel(c) {
-  return `<div class="panel"><div class="panel-title"><h2>Trilha de classes</h2><span class="chip accent">Atual: ${esc(c.d.cls.name)}</span></div>
-    <div class="class-track">${CLASSES.map((cl, i) => `<div class="class-node ${i <= c.d.classIndex ? 'reached' : ''} ${i === c.d.classIndex ? 'current' : ''}"
-      data-tip="${esc(cl.perkText.join(' · '))}"><span class="hud">${i <= c.d.classIndex ? 'Desbloqueada' : `Nv ${cl.minLevel}`}</span><b>${esc(cl.name)}</b><small>${esc(cl.reqText)}</small></div>`).join('')}</div>
+  const { cls, attrPoints } = c.d;
+  const sorted = [...ATTR_KEYS].sort((x, y) => attrPoints[y] - attrPoints[x]);
+  const [a1, a2] = sorted;
+  const pairName = PAIR_CLASSES[`${a1}+${a2}`]?.name;
+  const near = cls.archetype
+    ? (cls.archetype.attrs.length === 1
+      ? `Se ${attrInfo(a2).name} chegar a 70% de ${attrInfo(a1).name}, você vira <b>${esc(pairName)}</b>.`
+      : `Se ${attrInfo(a1).name} se distanciar de ${attrInfo(a2).name}, você volta a ser <b>${esc(SINGLE_CLASSES[a1].name)}</b>. Equilibrando tudo: <b>${BALANCED_CLASS.name}</b>.`)
+    : `Desenvolva um atributo até o nível ${CLASS_MIN_ATTR_LEVEL} para despertar sua classe.${attrPoints[a1] > 0 ? ` Hoje você está a caminho de <b>${esc(SINGLE_CLASSES[a1].name)}</b>.` : ''}`;
+  return `<div class="panel"><div class="panel-title"><h2>Classe</h2><span class="chip accent">${esc(cls.label)}</span></div>
+    <p style="margin:0">${cls.archetype ? `<b>${esc(cls.name)}</b>: ${esc(cls.archetype.desc)}` : '<b>Sem classe ainda.</b>'}</p>
+    <p class="tl-sub">Sua classe nasce dos atributos que você mais desenvolve e muda junto com eles. ${near}</p>
+    <div class="hud mt">Graus (pelo nível)</div>
+    <div class="class-track">${TIERS.map((t, i) => `<div class="class-node ${i <= cls.tierIndex ? 'reached' : ''} ${i === cls.tierIndex ? 'current' : ''}"
+      data-tip="${esc(t.perkText.join(' · '))}"><span class="hud">Nv ${t.minLevel}</span><b>${esc(t.name)}</b></div>`).join('')}</div>
+    <details class="box mt"><summary>Todas as classes possíveis</summary>
+      <div class="chips mt-s">${Object.entries(SINGLE_CLASSES).map(([k, v]) => `<span class="chip" data-tip="${esc(v.desc)}">${k} · ${esc(v.name)}</span>`).join('')}</div>
+      <div class="chips">${[...new Set(Object.entries(PAIR_CLASSES).map(([k, v]) => `${k.split('+').sort().join('+')}|${v.name}|${v.desc}`))].map((x) => { const [k, n, d] = x.split('|'); return `<span class="chip" data-tip="${esc(d)}">${k} · ${esc(n)}</span>`; }).join('')}
+      <span class="chip gold" data-tip="${esc(BALANCED_CLASS.desc)}">Tudo · ${BALANCED_CLASS.name}</span></div></details>
     <div class="hud mt">Benefícios ativos</div>
-    <div class="chips">${CLASSES.slice(0, c.d.classIndex + 1).flatMap((cl) => cl.perkText).map((p) => `<span class="chip">${esc(p)}</span>`).join('')}</div></div>`;
+    <div class="chips">${TIERS.slice(0, cls.tierIndex + 1).flatMap((t) => t.perkText).map((p) => `<span class="chip">${esc(p)}</span>`).join('')}</div></div>`;
 }
 
 function titlesPanel(c) {

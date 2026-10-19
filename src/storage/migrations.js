@@ -22,7 +22,17 @@ export function migrate(raw) {
   const s = structuredClone(raw);
   s.profile = fill(isObj(s.profile) ? s.profile : {}, { name: 'Jogador', activeTitle: null, theme: 'azul', onboarded: true });
   s.settings = isObj(s.settings) ? s.settings : {};
-  s.settings.rules = fill(isObj(s.settings.rules) ? s.settings.rules : {}, DEFAULT_RULES);
+  const hadDifficulty = isObj(s.settings.rules) && 'difficulty' in s.settings.rules;
+  const r0 = isObj(s.settings.rules) ? s.settings.rules : {};
+  // Versões anteriores não tinham dificuldade: quem usava a curva original passa ao modo Difícil;
+  // quem tinha personalizado a curva mantém os próprios valores.
+  if (!hadDifficulty && 'levelBase' in r0) {
+    const original = r0.levelBase === 100 && r0.levelExponent === 1.25;
+    r0.difficulty = original ? 'dificil' : 'custom';
+    if (original) Object.assign(r0, { levelBase: DEFAULT_RULES.levelBase, levelExponent: DEFAULT_RULES.levelExponent, attrDivisor: DEFAULT_RULES.attrDivisor });
+    else r0.attrDivisor = 4;
+  }
+  s.settings.rules = fill(r0, DEFAULT_RULES);
   s.settings.notifications = fill(isObj(s.settings.notifications) ? s.settings.notifications : {}, DEFAULT_NOTIFICATIONS);
   s.settings.backup = fill(isObj(s.settings.backup) ? s.settings.backup : {}, DEFAULT_BACKUP);
   s.settings.health = fill(isObj(s.settings.health) ? s.settings.health : {}, DEFAULT_HEALTH);

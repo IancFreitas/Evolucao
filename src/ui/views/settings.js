@@ -1,6 +1,6 @@
 import * as E from '../../core/engine.js';
 import { ATTRIBUTES, DEFAULT_RULES } from '../../core/defaults.js';
-import { THEMES, totalXpForLevel } from '../../core/levels.js';
+import { DIFFICULTY, THEMES, totalXpForLevel } from '../../core/levels.js';
 import { MISSION_TYPES } from '../../core/missions.js';
 import { addDays, formatDay, weekdayName } from '../../core/dates.js';
 import { NOTIFICATION_TYPES, permission, registerPeriodicSync, requestPermission, systemNotify } from '../../services/notifications.js';
@@ -16,7 +16,10 @@ import { render as rerender, run, store, ui } from '../app.js';
 const TABS = { profile: 'Perfil', rules: 'Regras de pontuação', activities: 'Atividades', notifications: 'Notificações', integrations: 'Integrações', data: 'Dados e privacidade' };
 
 function profileTab(c) {
-  return `<form data-form="profile" class="form-grid"><label class="field">Nome do personagem<input name="name" maxlength="40" value="${esc(c.state.profile.name)}"></label>
+  const life = c.state.profile.life;
+  return `<div class="notice" style="margin-bottom:14px">⚔️ <b>Personalização.</b> ${c.state.profile.personalizedAt ? `Feita em ${new Date(c.state.profile.personalizedAt).toLocaleDateString('pt-BR')}.${life?.goals?.length ? ` Metas: ${life.goals.map((g) => esc(g.title)).join(', ')}.` : ''}` : 'Ainda não feita.'}
+    Mudou algo na sua vida? Refaça a entrevista e o Sistema se adapta.<div class="row wrap mt-s"><button class="btn sm primary" data-action="awaken-start">${c.state.profile.personalizedAt ? 'Refazer personalização' : 'Personalizar agora'}</button></div></div>
+    <form data-form="profile" class="form-grid"><label class="field">Nome do personagem<input name="name" maxlength="40" value="${esc(c.state.profile.name)}"></label>
     <div class="full"><button class="btn primary sm">Salvar</button></div></form>
     <div class="hud mt">Tema visual</div>
     <div class="chips">${Object.entries(THEMES).map(([k, t]) => {
@@ -31,9 +34,14 @@ function rulesTab(c) {
   const lv = [5, 10, 20, 35, 50].map((l) => ({ l, xp: totalXpForLevel(l, r) }));
   const num = (name, label, val, attrs = '', hint = '') => `<label class="field">${label}<input name="${name}" type="number" ${attrs} value="${val}">${hint ? `<span class="dim" style="font-weight:400;font-size:12px">${hint}</span>` : ''}</label>`;
   return `<form data-form="rules" class="form-grid">
-    <div class="full hud">Curva de níveis</div>
+    <div class="full hud">Dificuldade</div>
+    <div class="full day-status">${[...Object.entries(DIFFICULTY), ['custom', { name: 'Personalizada', desc: 'Seus próprios valores de curva.' }]].map(([k, d]) => `
+      <label class="ds ${r.difficulty === k ? 'active' : ''}" style="cursor:pointer"><input type="radio" name="difficulty" value="${k}" ${r.difficulty === k ? 'checked' : ''} class="sr">
+      <b>${esc(d.name)}</b><small>${esc(d.desc)}${d.levelBase ? `<br>Nível 45: ~${(totalXpForLevel(45, d) / 250 / 365).toFixed(1).replace('.', ',')} anos a 250 XP/dia` : ''}</small></label>`).join('')}</div>
+    <div class="full hud mt-s">Curva de níveis (avançado)</div>
     ${num('levelBase', 'XP base por nível', r.levelBase, 'min="20" max="2000"')}
-    ${num('levelExponent', 'Crescimento (expoente)', r.levelExponent, 'min="1" max="2.5" step="0.05"', 'XP do nível N = base × N^expoente')}
+    ${num('levelExponent', 'Crescimento (expoente)', r.levelExponent, 'min="0.8" max="2.5" step="0.05"', 'XP do nível N = base × N^expoente')}
+    ${num('attrDivisor', 'Lentidão dos atributos', r.attrDivisor, 'min="2" max="30"', 'Nível do atributo = raiz(pontos ÷ este valor) + 1')}
     <div class="full notice" style="font-size:13px">Com ~200 XP/dia: ${lv.map((x) => `nível ${x.l} em <b>${fmt(x.xp)} XP</b> (~${Math.round(x.xp / 200)} dias)`).join(' · ')}</div>
     <div class="full hud mt-s">Bônus e moedas</div>
     ${num('dailyBonus', 'Bônus por completar as essenciais do dia', r.dailyBonus, 'min="0" max="1000"')}
@@ -368,8 +376,10 @@ const forms = {
     if (run((s) => E.updateHealthSettings(s, { ...data, autoConfirm: !!data.autoConfirm }), null, { quiet: true })) toast('Metas do Saúde salvas.');
   },
   profile: (data) => { run((s) => E.updateProfile(s, { name: data.name }), null, { quiet: true }); toast('Perfil salvo.'); },
-  rules: (data) => {
+  rules: (data, form, c) => {
     const patch = { ...data, missionTypeXp: {} };
+    // dificuldade só é aplicada quando trocada (senão vale a edição manual da curva)
+    if (data.difficulty === c.state.settings.rules.difficulty || data.difficulty === 'custom') delete patch.difficulty;
     for (const t of Object.keys(MISSION_TYPES)) if (data[`mt_${t}`] != null) patch.missionTypeXp[t] = data[`mt_${t}`];
     if (run((s) => E.updateRules(s, patch), null, { quiet: true })) toast('Regras salvas.');
   },

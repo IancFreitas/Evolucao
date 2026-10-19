@@ -1,5 +1,19 @@
-// Curva de níveis, níveis de atributo, classes e benefícios.
+// Curva de níveis, dificuldade, níveis de atributo, classes e benefícios.
 import { ATTR_KEYS } from './defaults.js';
+
+/**
+ * Presets de dificuldade. `attrDivisor` controla a velocidade dos atributos:
+ * nível do atributo = raiz(pontos / divisor) + 1.
+ * Projeções com ~250 XP/dia (rotina consistente, sem dungeons):
+ *   Casual:  nível 10 em ~1 mês,    nível 45 em ~2,5 anos
+ *   Difícil: nível 10 em ~2 meses,  nível 45 em ~5 anos (≈3,5 anos num ritmo forte de 350 XP/dia)
+ *   Monarca: nível 10 em ~3,5 meses, nível 45 em ~10 anos
+ */
+export const DIFFICULTY = {
+  casual: { name: 'Casual', levelBase: 100, levelExponent: 1.25, attrDivisor: 4, desc: 'Progresso rápido, bom para criar o hábito.' },
+  dificil: { name: 'Difícil', levelBase: 250, levelExponent: 1.2, attrDivisor: 8, desc: 'Cada nível é conquistado. Rank S exige anos de constância.' },
+  monarca: { name: 'Monarca', levelBase: 350, levelExponent: 1.3, attrDivisor: 12, desc: 'Extremo. Uma jornada de uma década.' },
+};
 
 /** XP necessário para sair do nível `level` e chegar ao próximo. */
 export function xpForLevel(level, rules) {
@@ -24,12 +38,12 @@ export function levelFromXp(total, rules) {
   return { level, into: rem, needed, progress: rem / needed };
 }
 
-/** Nível de atributo: cresce com a raiz quadrada dos pontos (rápido no início, estável depois). */
-export function attrLevel(points) {
+/** Nível de atributo: cresce com a raiz quadrada dos pontos (rápido no início, cada vez mais lento). */
+export function attrLevel(points, divisor = 4) {
   const p = Math.max(0, points);
-  const level = Math.floor(Math.sqrt(p / 4)) + 1;
-  const cur = 4 * (level - 1) ** 2;
-  const next = 4 * level ** 2;
+  const level = Math.floor(Math.sqrt(p / divisor)) + 1;
+  const cur = divisor * (level - 1) ** 2;
+  const next = divisor * level ** 2;
   return { level, points: p, into: p - cur, needed: next - cur, progress: (p - cur) / (next - cur) };
 }
 
@@ -42,60 +56,98 @@ export const THEMES = {
   ascendente: { name: 'Ascendente', accent: '#e9f1ff', accent2: '#8b5cf6' },
 };
 
-const countAtLeast = (attrLevels, min) => ATTR_KEYS.filter((k) => (attrLevels[k] || 1) >= min).length;
+/* ------------------------------------------------------------------ */
+/* Classes: nascem dos atributos que você mais desenvolve.             */
+/* ------------------------------------------------------------------ */
+
+export const SINGLE_CLASSES = {
+  STR: { name: 'Guerreiro', desc: 'Força acima de tudo.' },
+  END: { name: 'Andarilho', desc: 'Fôlego que não acaba.' },
+  INT: { name: 'Arcanista', desc: 'Conhecimento como arma.' },
+  WIS: { name: 'Oráculo', desc: 'Clareza e decisões conscientes.' },
+  DISC: { name: 'Sentinela', desc: 'Constância inabalável.' },
+  CHA: { name: 'Bardo', desc: 'Conexão e comunicação.' },
+  VIT: { name: 'Druida', desc: 'Equilíbrio do corpo e do descanso.' },
+};
+
+const PAIR_LIST = [
+  ['STR', 'END', 'Gladiador', 'Força com resistência de arena.'],
+  ['STR', 'INT', 'Cavaleiro Rúnico', 'Corpo forte e mente afiada.'],
+  ['STR', 'WIS', 'Monge', 'Força guiada pela consciência.'],
+  ['STR', 'DISC', 'Paladino', 'Força a serviço da disciplina.'],
+  ['STR', 'CHA', 'Campeão', 'Força que inspira os outros.'],
+  ['STR', 'VIT', 'Titã', 'Força sustentada por boa recuperação.'],
+  ['END', 'INT', 'Explorador', 'Fôlego para ir longe, curiosidade para descobrir.'],
+  ['END', 'WIS', 'Peregrino', 'Caminhadas longas e reflexão.'],
+  ['END', 'DISC', 'Patrulheiro', 'Constância em movimento.'],
+  ['END', 'CHA', 'Mensageiro', 'Energia que leva pessoas junto.'],
+  ['END', 'VIT', 'Nômade', 'Movimento e recuperação em harmonia.'],
+  ['INT', 'WIS', 'Sábio', 'Conhecimento transformado em sabedoria.'],
+  ['INT', 'DISC', 'Artífice', 'Estudo constante que vira construção.'],
+  ['INT', 'CHA', 'Estrategista', 'Ideias que convencem e movem pessoas.'],
+  ['INT', 'VIT', 'Alquimista', 'Mente afiada em um corpo cuidado.'],
+  ['WIS', 'DISC', 'Asceta', 'Autodomínio e propósito.'],
+  ['WIS', 'CHA', 'Conselheiro', 'Escuta, clareza e boas palavras.'],
+  ['WIS', 'VIT', 'Xamã', 'Mente serena, corpo restaurado.'],
+  ['DISC', 'CHA', 'Comandante', 'Lidera pelo exemplo.'],
+  ['DISC', 'VIT', 'Guardião', 'Rotina que protege a saúde.'],
+  ['CHA', 'VIT', 'Curandeiro', 'Cuida de si e dos outros.'],
+];
+export const PAIR_CLASSES = Object.fromEntries(PAIR_LIST.flatMap(([a, b, name, desc]) => [[`${a}+${b}`, { name, desc }], [`${b}+${a}`, { name, desc }]]));
+export const BALANCED_CLASS = { name: 'Harmonista', desc: 'Todas as áreas em equilíbrio. A classe mais rara.' };
+
+// Uma classe só aparece quando algum atributo chega a este nível.
+export const CLASS_MIN_ATTR_LEVEL = 3;
 
 /**
- * Classes: exigem nível do personagem e um mínimo de equilíbrio nos atributos.
- * Benefícios são cumulativos.
+ * Define a classe pelo perfil de atributos:
+ * - Harmonista: todos os atributos com pelo menos 75% dos pontos do maior (e nível ≥ 4);
+ * - Híbrida: o 2º atributo tem ao menos 70% dos pontos do 1º;
+ * - Pura: um atributo domina.
  */
-export const CLASSES = [
-  {
-    id: 'aprendiz', name: 'Aprendiz', minLevel: 1, reqText: 'Início da jornada',
-    req: () => true,
-    perks: { theme: 'azul' }, perkText: ['Acesso ao Sistema', 'Tema Azul Elétrico'],
-  },
-  {
-    id: 'explorador', name: 'Explorador', minLevel: 5, reqText: 'Nível 5',
-    req: () => true,
-    perks: { theme: 'ametista', shieldsBonus: 1 }, perkText: ['+1 escudo de sequência por semana', 'Tema Ametista'],
-  },
-  {
-    id: 'estrategista', name: 'Estrategista', minLevel: 12, reqText: 'Nível 12 e 2 atributos no nível 5',
-    req: (al) => countAtLeast(al, 5) >= 2,
-    perks: { theme: 'aurora', coinBonus: 0.05 }, perkText: ['+5% de moedas', 'Tema Aurora', 'Moldura de Estrategista'],
-  },
-  {
-    id: 'especialista', name: 'Especialista', minLevel: 20, reqText: 'Nível 20 e um atributo no nível 10',
-    req: (al) => countAtLeast(al, 10) >= 1,
-    perks: { theme: 'carmesim', coinBonus: 0.05, shieldsBonus: 1 }, perkText: ['+5% de moedas (total 10%)', '+1 escudo semanal', 'Tema Carmesim'],
-  },
-  {
-    id: 'mestre', name: 'Mestre', minLevel: 32, reqText: 'Nível 32 e 4 atributos no nível 8',
-    req: (al) => countAtLeast(al, 8) >= 4,
-    perks: { theme: 'ouro', coinBonus: 0.05 }, perkText: ['+5% de moedas (total 15%)', 'Tema Ouro Arcano', 'Aura dourada'],
-  },
-  {
-    id: 'ascendente', name: 'Ascendente', minLevel: 45, reqText: 'Nível 45 e todos os atributos no nível 8',
-    req: (al) => countAtLeast(al, 8) >= ATTR_KEYS.length,
-    perks: { theme: 'ascendente', coinBonus: 0.05, shieldsBonus: 1 }, perkText: ['+5% de moedas (total 20%)', '+1 escudo semanal', 'Tema Ascendente animado'],
-  },
+export function archetypeFor(attrPoints, attrLevels) {
+  const sorted = [...ATTR_KEYS].sort((a, b) => (attrPoints[b] || 0) - (attrPoints[a] || 0));
+  const [first, second] = sorted;
+  const top = attrPoints[first] || 0;
+  if ((attrLevels[first] || 1) < CLASS_MIN_ATTR_LEVEL) return null;
+  const min = Math.min(...ATTR_KEYS.map((k) => attrPoints[k] || 0));
+  if (min >= top * 0.75 && Math.min(...ATTR_KEYS.map((k) => attrLevels[k] || 1)) >= 4) {
+    return { key: 'BAL', attrs: [...ATTR_KEYS], ...BALANCED_CLASS };
+  }
+  if ((attrPoints[second] || 0) >= top * 0.7 && (attrLevels[second] || 1) >= CLASS_MIN_ATTR_LEVEL) {
+    return { key: `${first}+${second}`, attrs: [first, second], ...PAIR_CLASSES[`${first}+${second}`] };
+  }
+  return { key: first, attrs: [first], ...SINGLE_CLASSES[first] };
+}
+
+/** Tiers: o nível do personagem define o grau da classe e os benefícios. */
+export const TIERS = [
+  { minLevel: 1, name: 'Iniciante', perks: { theme: 'azul' }, perkText: ['Acesso ao Sistema', 'Tema Azul Elétrico'] },
+  { minLevel: 10, name: 'Desperto', perks: { theme: 'ametista', shieldsBonus: 1 }, perkText: ['+1 escudo de sequência por semana', 'Tema Ametista'] },
+  { minLevel: 20, name: 'Elite', perks: { theme: 'aurora', coinBonus: 0.05 }, perkText: ['+5% de moedas', 'Tema Aurora'] },
+  { minLevel: 30, name: 'Mestre', perks: { theme: 'carmesim', coinBonus: 0.05, shieldsBonus: 1 }, perkText: ['+5% de moedas (total 10%)', '+1 escudo semanal', 'Tema Carmesim'] },
+  { minLevel: 40, name: 'Lenda', perks: { theme: 'ouro', coinBonus: 0.05 }, perkText: ['+5% de moedas (total 15%)', 'Tema Ouro Arcano'] },
+  { minLevel: 50, name: 'Ascendente', perks: { theme: 'ascendente', coinBonus: 0.05, shieldsBonus: 1 }, perkText: ['+5% de moedas (total 20%)', '+1 escudo semanal', 'Tema Ascendente'] },
 ];
 
-/** Retorna o índice da classe atual (as classes são desbloqueadas em ordem). */
-export function classIndexFor(level, attrLevels) {
+export function tierIndexFor(level) {
   let idx = 0;
-  for (let i = 1; i < CLASSES.length; i++) {
-    const c = CLASSES[i];
-    if (level >= c.minLevel && c.req(attrLevels)) idx = i;
-    else break;
-  }
+  TIERS.forEach((t, i) => { if (level >= t.minLevel) idx = i; });
   return idx;
 }
 
-export function perksFor(classIndex) {
+export function classFor(level, attrPoints, attrLevels) {
+  const archetype = archetypeFor(attrPoints, attrLevels);
+  const tierIndex = tierIndexFor(level);
+  const tier = TIERS[tierIndex];
+  const name = archetype ? archetype.name : 'Sem classe';
+  return { name, archetype, tierIndex, tier, label: `${name} · ${tier.name}` };
+}
+
+export function perksFor(tierIndex) {
   const perks = { coinBonus: 0, shieldsBonus: 0, themes: [] };
-  for (let i = 0; i <= classIndex; i++) {
-    const p = CLASSES[i].perks;
+  for (let i = 0; i <= tierIndex; i++) {
+    const p = TIERS[i].perks;
     perks.coinBonus += p.coinBonus || 0;
     perks.shieldsBonus += p.shieldsBonus || 0;
     if (p.theme) perks.themes.push(p.theme);
