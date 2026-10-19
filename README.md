@@ -28,6 +28,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | XP | Valores configuráveis por atividade e por tipo de missão, curva progressiva editável, bônus diário |
 | Anti-exploração | Conclusão única por período, retornos decrescentes, limite diário, intervalo mínimo, sem registros futuros, retroativos limitados, chaves únicas no livro-razão |
 | Missões | Diárias (dias da semana, essenciais, versão leve), semanais, principais (progresso + marcos 25/50/75%), especiais, Boss Battles (etapas e HP). Criar, editar, adiar, pausar, concluir, desfazer, excluir |
+| Dungeons | 42 dungeons (7 áreas × ranks E→S) com requisitos medidos pelos registros, chefe final com prazo, portão fechado por 48h (configurável) após derrota sem perder os requisitos, rank por área e rank geral (4 áreas no mesmo rank) |
 | Classes | Aprendiz → Explorador → Estrategista → Especialista → Mestre → Ascendente, com requisitos de nível e equilíbrio e benefícios (temas, escudos, bônus de moedas) |
 | Conquistas | 33 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |

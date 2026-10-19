@@ -46,6 +46,7 @@ function rulesTab(c) {
     <label class="field">Retornos decrescentes (por repetição)<input name="diminishing" value="${r.diminishing.join(', ')}"><span class="dim" style="font-weight:400;font-size:12px">Multiplicadores do 1º, 2º, 3º... registro livre da mesma atividade no dia</span></label>
     ${num('cooldownMinutes', 'Intervalo mínimo entre repetições (min)', r.cooldownMinutes, 'min="0" max="1440"')}
     ${num('backdateDays', 'Dias permitidos para registro retroativo', r.backdateDays, 'min="0" max="7"')}
+    ${num('dungeonCooldownHours', 'Portão fechado após falhar no chefe (horas)', r.dungeonCooldownHours, 'min="0" max="168"')}
     ${num('dayStartHour', 'Hora de virada do dia (0–8)', r.dayStartHour, 'min="0" max="8"', 'Ex.: 4 = atividades até 3h59 contam no dia anterior')}
     <div class="full hud mt-s">XP padrão por tipo de missão</div>
     ${Object.keys(r.missionTypeXp).filter((t) => t !== 'daily').map((t) => num(`mt_${t}`, MISSION_TYPES[t].single, r.missionTypeXp[t], 'min="0" max="5000"')).join('')}

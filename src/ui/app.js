@@ -14,6 +14,7 @@ import { closeModal, esc, floatXp, fmt, icon, initTooltips, logo, modalOpen, pic
 
 import statusView from './views/status.js';
 import missionsView from './views/missions.js';
+import dungeonsView from './views/dungeons.js';
 import logView from './views/log.js';
 import analyticsView from './views/analytics.js';
 import achievementsView from './views/achievements.js';
@@ -21,8 +22,8 @@ import shopView from './views/shop.js';
 import historyView from './views/history.js';
 import settingsView from './views/settings.js';
 
-const VIEWS = [statusView, missionsView, logView, analyticsView, achievementsView, shopView, historyView, settingsView];
-const MOBILE_NAV = ['status', 'missions', 'log', 'analytics'];
+const VIEWS = [statusView, missionsView, dungeonsView, logView, analyticsView, achievementsView, shopView, historyView, settingsView];
+const MOBILE_NAV = ['status', 'missions', 'dungeons', 'log'];
 
 /* ------------------------------ Store ------------------------------ */
 
@@ -328,6 +329,24 @@ function tick() {
     });
     systemNotify(notif, r.type, title, body);
   }
+  // Dungeons: prazo do chefe esgotado conta como derrota; avisa quando o portão reabre
+  const expired = E.expireDungeons(structuredClone(s));
+  if (expired.length) {
+    store.mutate((st) => {
+      E.expireDungeons(st);
+      for (const id of expired) pushInbox(st, 'goal', `Prazo do chefe esgotado (${id})`, 'O portão fechou por um tempo. Seus requisitos continuam cumpridos.');
+    });
+  }
+  for (const [id, r] of Object.entries(store.state.dungeons || {})) {
+    if (r.cooldownUntil && Date.now() >= r.cooldownUntil && store.state.meta.lastNotified?.[`dg:${id}`] !== r.cooldownUntil) {
+      store.mutate((st) => {
+        st.meta.lastNotified = { ...(st.meta.lastNotified || {}), [`dg:${id}`]: r.cooldownUntil };
+        pushInbox(st, 'goal', `Portão reaberto: ${id}`, 'Você já pode enfrentar o chefe novamente.');
+      });
+      systemNotify(notif, 'goal', `Portão reaberto: ${id}`, 'Você já pode enfrentar o chefe novamente.');
+    }
+  }
+  if (ui.view === 'dungeons' && !modalOpen()) render(); // contagem regressiva
   // Backup em atraso: avisa uma vez por dia (o banner do Status continua visível)
   if (backupOverdue(s) && s.meta.lastNotified?.backup !== today) {
     const days = daysSinceBackup(s);

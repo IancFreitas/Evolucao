@@ -29,7 +29,7 @@ export function migrate(raw) {
   if (!Array.isArray(s.settings.activities) || !s.settings.activities.length) s.settings.activities = structuredClone(DEFAULT_ACTIVITIES);
   for (const k of ['missions', 'log', 'inventory', 'pending', 'inbox']) if (!Array.isArray(s[k])) s[k] = [];
   if (!Array.isArray(s.rewards)) s.rewards = structuredClone(DEFAULT_REWARDS);
-  for (const k of ['days', 'achievements']) if (!isObj(s[k])) s[k] = {};
+  for (const k of ['days', 'achievements', 'dungeons']) if (!isObj(s[k])) s[k] = {};
   s.meta = fill(isObj(s.meta) ? s.meta : {}, { backups: 0, lastBackupAt: null, lastNotified: {}, addedActivities: [] });
   // Atividades novas do padrão são adicionadas uma única vez (se você excluir, não voltam).
   for (const a of DEFAULT_ACTIVITIES) {

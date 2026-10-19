@@ -12,8 +12,8 @@ const KINDS = {
   system: 'Bônus e conquistas',
   purchase: 'Loja',
 };
-const SYSTEM_KINDS = ['bonus', 'comeback', 'achievement', 'stage', 'milestone'];
-const KIND_ICON = { mission: '🎯', activity: '⚡', bonus: '🌟', comeback: '🐦‍🔥', achievement: '🏆', stage: '🗡️', milestone: '🧭', purchase: '🛍️', adjust: '⚙️' };
+const SYSTEM_KINDS = ['dungeon', 'bonus', 'comeback', 'achievement', 'stage', 'milestone'];
+const KIND_ICON = { mission: '🎯', activity: '⚡', bonus: '🌟', comeback: '🐦‍🔥', achievement: '🏆', stage: '🗡️', milestone: '🧭', purchase: '🛍️', dungeon: '🚪', adjust: '⚙️' };
 
 function render(c) {
   const kind = ui.tabs.histKind || 'all';

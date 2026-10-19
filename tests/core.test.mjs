@@ -229,3 +229,56 @@ test('dados do Atalho: unidades flexíveis, link e confirmação automática', (
   assert.deepEqual(r, { added: 1, confirmed: 1, pending: 0 });
   assert.equal(E.importItems(s, items, { autoConfirm: true }).added, 0, 'reimportar não duplica');
 });
+
+import { dungeonDef, dungeonStatus, hunterRank } from '../src/core/dungeons.js';
+
+const dgStatus = (s, area, rank) => {
+  const d = E.derive(s);
+  return dungeonStatus(s, dungeonDef(area, rank), { level: d.level.level, attrLevels: d.attrLevels }, E.clock.now()).status;
+};
+
+test('dungeon: requisitos só contam depois de entrar; falha fecha o portão por 48h', () => {
+  const s = fresh();
+  s.settings.rules.backdateDays = 7;
+  const t0 = E.todayKey(s);
+  E.logActivity(s, 'estudo', { date: addDays(t0, -3) }); // antes de entrar: não conta
+  assert.equal(dgStatus(s, 'INT', 0), 'available');
+  assert.equal(dgStatus(s, 'INT', 1), 'locked');
+  E.enterDungeon(s, 'INT-E');
+  assert.throws(() => E.startBoss(s, 'INT-E'), /requisitos/);
+  for (let i = 0; i < 3; i++) { E.logActivity(s, 'estudo'); now += 864e5; }
+  assert.equal(dgStatus(s, 'INT', 0), 'ready');
+  E.startBoss(s, 'INT-E');
+  E.resolveBoss(s, 'INT-E', false);
+  assert.equal(dgStatus(s, 'INT', 0), 'cooldown');
+  assert.throws(() => E.startBoss(s, 'INT-E'), /portão/);
+  now += 47 * 3600e3;
+  assert.equal(dgStatus(s, 'INT', 0), 'cooldown');
+  now += 2 * 3600e3;
+  assert.equal(dgStatus(s, 'INT', 0), 'ready', 'requisitos mantidos após a espera');
+  const xp = E.derive(s).totalXp;
+  E.startBoss(s, 'INT-E');
+  const { events } = E.act(s, (st) => E.resolveBoss(st, 'INT-E', true));
+  assert.equal(E.derive(s).totalXp - xp, 150);
+  assert.ok(events.some((e) => e.type === 'achievement' && e.achievement.id === 'dg-1'));
+  assert.equal(dgStatus(s, 'INT', 0), 'cleared');
+  assert.equal(dgStatus(s, 'INT', 1), 'locked', 'Rank D exige nível 5');
+});
+
+test('dungeon: prazo do chefe esgotado conta como derrota', () => {
+  const s = fresh();
+  s.dungeons['VIT-E'] = { enteredAt: now - 864e5, enteredDate: addDays(E.todayKey(s), -1), attempts: 1, failures: 0,
+    bossStartedAt: now - 30 * 3600e3, bossDeadline: now - 6 * 3600e3, cooldownHours: 48 };
+  assert.equal(dgStatus(s, 'VIT', 0), 'cooldown');
+  assert.deepEqual(E.expireDungeons(s), ['VIT-E']);
+  assert.equal(s.dungeons['VIT-E'].failures, 1);
+  assert.equal(s.dungeons['VIT-E'].cooldownUntil, now + 42 * 3600e3);
+});
+
+test('rank geral exige 4 áreas no rank', () => {
+  const s = fresh();
+  for (const a of ['STR', 'END', 'INT']) s.dungeons[`${a}-E`] = { clearedAt: now };
+  assert.equal(hunterRank(s), -1);
+  s.dungeons['VIT-E'] = { clearedAt: now };
+  assert.equal(hunterRank(s), 0);
+});

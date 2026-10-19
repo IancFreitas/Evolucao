@@ -42,6 +42,11 @@ export const ACHIEVEMENTS = [
   A('fenix', 'Fênix', 'Retome a rotina depois de uma pausa.', '🐦‍🔥', 'raro', (s) => s.comebacks, 1, 'Renascido'),
   A('descanso-10', 'Mestre do Equilíbrio', 'Respeite 10 dias de descanso planejado.', '☯️', 'raro', (s) => s.restDays, 10),
   A('equilibrio', 'Harmonia Perfeita', 'Todos os atributos no nível 5.', '🌈', 'lendario', (s) => s.minAttrLevel, 5, 'Harmonia Perfeita'),
+  A('dg-1', 'Primeiro Portão', 'Limpe sua primeira dungeon.', '🚪', 'comum', (s) => s.dungeonsCleared, 1),
+  A('dg-c', 'Explorador de Masmorras', 'Alcance o Rank C em uma área.', '🗝️', 'raro', (s) => s.maxAreaRank + 1, 3, 'Explorador de Masmorras'),
+  A('dg-a', 'Conquistador de Abismos', 'Alcance o Rank A em uma área.', '🌋', 'epico', (s) => s.maxAreaRank + 1, 5, 'Conquistador de Abismos'),
+  A('dg-s', 'Soberano da Área', 'Alcance o Rank S em uma área.', '👁️‍🗨️', 'lendario', (s) => s.maxAreaRank + 1, 6, 'Soberano'),
+  A('rank-s', 'Rank S', 'Rank geral S: quatro áreas no Rank S.', '⚡', 'lendario', (s) => s.hunterRank + 1, 6, 'Rank S'),
   A('loja-1', 'Recompensa Merecida', 'Troque moedas por uma recompensa.', '🎁', 'comum', (s) => s.purchases, 1),
   A('backup-1', 'Guardião dos Registros', 'Exporte um backup dos seus dados.', '💾', 'comum', (s) => s.backups, 1),
 ];

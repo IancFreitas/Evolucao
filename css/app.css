@@ -436,3 +436,29 @@ details.box summary { cursor: pointer; font-weight: 650; }
   .panel { padding: 15px; }
   .stat .v { font-size: 22px; }
 }
+
+/* ---------- Dungeons ---------- */
+.rank-badge {
+  --rk: #8d9bc4; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; flex: none;
+  font: 900 20px var(--mono); color: var(--rk); border: 2px solid var(--rk); background: color-mix(in srgb, var(--rk) 12%, transparent);
+  box-shadow: 0 0 18px -6px var(--rk); transform: skewX(-6deg);
+}
+.rank-badge.big { width: 84px; height: 84px; font-size: 44px; border-radius: 18px; }
+.rank-none { --rk: #5b6890; }
+.rank-E { --rk: #9fb0d8; }
+.rank-D { --rk: #7ee35b; }
+.rank-C { --rk: #3d8bff; }
+.rank-B { --rk: #b06bff; }
+.rank-A { --rk: #ff9f43; }
+.rank-S { --rk: #ffc857; box-shadow: 0 0 30px -4px #ffc857; }
+.dungeon { border-top: 2px solid color-mix(in srgb, var(--c) 60%, transparent); }
+.dungeon.dg-locked { opacity: 0.6; }
+.dungeon.dg-ready, .dungeon.dg-boss { box-shadow: 0 0 0 1px rgba(255, 92, 122, 0.5), 0 12px 40px -16px #ff2d55; }
+.ladder { display: flex; gap: 4px; }
+.rung { width: 24px; height: 22px; display: grid; place-items: center; font: 700 11px var(--mono); border-radius: 5px; border: 1px solid var(--line); color: var(--dim); }
+.rung.done { background: color-mix(in srgb, var(--c) 35%, transparent); color: var(--text); border-color: var(--c); }
+.rung.cur { border-color: var(--c); color: var(--c); box-shadow: 0 0 10px -2px var(--c); }
+.boss-box { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; border: 1px dashed rgba(255, 92, 122, 0.45); background: rgba(255, 45, 85, 0.05); }
+.boss-box.active { border-style: solid; background: rgba(255, 45, 85, 0.1); animation: bossGlow 2.4s ease-in-out infinite; }
+@keyframes bossGlow { 50% { box-shadow: 0 0 24px -6px #ff2d55; } }
+.btn.pulse { animation: bossGlow 1.8s ease-in-out infinite; }

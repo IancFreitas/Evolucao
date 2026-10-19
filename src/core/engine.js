@@ -11,6 +11,7 @@ import {
 } from './missions.js';
 import { computeStreak, effortDays, inactiveGapBefore } from './streaks.js';
 import { ACHIEVEMENTS, RARITY } from './achievements.js';
+import { RANKS, areaRanks, dungeonDef, dungeonStatus, hunterRank } from './dungeons.js';
 
 export { RuleError };
 
@@ -76,6 +77,10 @@ export function computeStats(state, d = derive(state)) {
   s.attrDays = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrDaySets[k].size]));
   s.activityDays = Object.fromEntries(Object.entries(activityDaySets).map(([k, v]) => [k, v.size]));
   s.restDays = restDays.size;
+  const ar = Object.values(areaRanks(state));
+  s.dungeonsCleared = Object.values(state.dungeons || {}).filter((r) => r.clearedAt).length;
+  s.maxAreaRank = Math.max(-1, ...ar);
+  s.hunterRank = hunterRank(state);
   return s;
 }
 
@@ -89,6 +94,7 @@ export function unlockedTitles(state) {
 
 export function act(state, mutator) {
   const today = todayKey(state);
+  expireDungeons(state);
   const before = derive(state, today);
   const result = mutator(state, today);
   const unlocked = evaluateAchievements(state, today);
@@ -585,6 +591,83 @@ export function rejectPending(state, id) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Dungeons.                                                           */
+/* ------------------------------------------------------------------ */
+
+function getDungeon(state, id) {
+  const [area, letter] = String(id).split('-');
+  const rank = RANKS.indexOf(letter);
+  if (rank < 0) throw new RuleError('Dungeon não encontrada.');
+  const def = dungeonDef(area, rank);
+  const d = derive(state);
+  return { def, st: dungeonStatus(state, def, { level: d.level.level, attrLevels: d.attrLevels }, clock.now()) };
+}
+
+export function enterDungeon(state, id, today = todayKey(state)) {
+  const { def, st } = getDungeon(state, id);
+  if (st.status === 'locked') throw new RuleError(st.reason);
+  if (st.status !== 'available') throw new RuleError('Você já está nesta dungeon.');
+  state.dungeons[def.id] = { enteredAt: clock.now(), enteredDate: today, attempts: 0, failures: 0 };
+  return state.dungeons[def.id];
+}
+
+/** Sair da dungeon zera os requisitos (é possível entrar de novo quando quiser). */
+export function abandonDungeon(state, id) {
+  const { def, st } = getDungeon(state, id);
+  if (!['active', 'ready', 'cooldown'].includes(st.status)) throw new RuleError('Não é possível sair agora.');
+  delete state.dungeons[def.id];
+}
+
+export function startBoss(state, id) {
+  const { def, st } = getDungeon(state, id);
+  if (st.status === 'cooldown') throw new RuleError('O portão ainda está fechado. Recupere-se e volte depois.');
+  if (st.status !== 'ready') throw new RuleError('Cumpra todos os requisitos antes de enfrentar o chefe.');
+  const run = state.dungeons[def.id];
+  run.bossStartedAt = clock.now();
+  run.bossDeadline = clock.now() + def.hours * 3600e3;
+  run.cooldownHours = state.settings.rules.dungeonCooldownHours;
+  run.cooldownUntil = null;
+  run.attempts = (run.attempts || 0) + 1;
+  return run;
+}
+
+/** Resultado do chefe informado por você: vitória limpa a dungeon; derrota fecha o portão. */
+export function resolveBoss(state, id, victory, today = todayKey(state)) {
+  const { def, st } = getDungeon(state, id);
+  if (st.status !== 'boss') throw new RuleError('Não há um desafio final em andamento.');
+  const run = state.dungeons[def.id];
+  if (victory) {
+    run.clearedAt = clock.now();
+    const attrs = { [def.area]: def.attr, DISC: Math.ceil(def.attr / 5) };
+    award(state, {
+      key: `dg:${def.id}`, kind: 'dungeon', date: today, title: `Dungeon limpa: ${def.name} · Rank ${def.rankLetter}`,
+      xp: def.xp, coins: coinsFor(def.xp, state.settings.rules, perksOf(state)), attrs, source: 'system', ts: clock.now(),
+    });
+  } else {
+    run.failures = (run.failures || 0) + 1;
+    run.cooldownUntil = clock.now() + (run.cooldownHours ?? state.settings.rules.dungeonCooldownHours) * 3600e3;
+  }
+  delete run.bossStartedAt;
+  delete run.bossDeadline;
+  return { def, victory, run };
+}
+
+/** Prazo do chefe esgotado conta como derrota (o portão fecha a partir do fim do prazo). */
+export function expireDungeons(state) {
+  const expired = [];
+  for (const [id, run] of Object.entries(state.dungeons || {})) {
+    if (run.bossStartedAt && !run.clearedAt && clock.now() > run.bossDeadline) {
+      run.failures = (run.failures || 0) + 1;
+      run.cooldownUntil = run.bossDeadline + (run.cooldownHours ?? state.settings.rules.dungeonCooldownHours) * 3600e3;
+      delete run.bossStartedAt;
+      delete run.bossDeadline;
+      expired.push(id);
+    }
+  }
+  return expired;
+}
+
+/* ------------------------------------------------------------------ */
 /* Perfil e regras.                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -621,6 +704,7 @@ export function updateRules(state, patch) {
   r.comebackBonus = clampNum(patch.comebackBonus ?? r.comebackBonus, 0, 500, d.comebackBonus);
   r.comebackGapDays = Math.round(clampNum(patch.comebackGapDays ?? r.comebackGapDays, 1, 60, d.comebackGapDays));
   r.shieldsPerWeek = Math.round(clampNum(patch.shieldsPerWeek ?? r.shieldsPerWeek, 0, 7, d.shieldsPerWeek));
+  r.dungeonCooldownHours = Math.round(clampNum(patch.dungeonCooldownHours ?? r.dungeonCooldownHours, 0, 168, d.dungeonCooldownHours));
   r.dayStartHour = Math.round(clampNum(patch.dayStartHour ?? r.dayStartHour, 0, 8, d.dayStartHour));
   if (patch.diminishing != null) {
     const arr = (Array.isArray(patch.diminishing) ? patch.diminishing : String(patch.diminishing).split(/[,;\s]+/))

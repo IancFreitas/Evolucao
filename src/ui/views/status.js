@@ -8,6 +8,7 @@ import { focusAreas } from '../../core/analytics.js';
 import { esc, fmt, icon } from '../dom.js';
 import { run, store } from '../app.js';
 import { missionRow } from './missions.js';
+import { RANKS, hunterRank } from '../../core/dungeons.js';
 import { backupOverdue, backupStatusText, saveBackupToCloud } from '../cloud.js';
 
 function hero(c) {
@@ -22,6 +23,7 @@ function hero(c) {
       <div class="hero-title">« ${esc(title)} »</div>
       <div class="chips">
         <span class="chip accent">⚜ Classe: ${esc(d.cls.name)}</span>
+        <button class="chip" data-nav="dungeons" style="cursor:pointer">🚪 ${hunterRank(state) >= 0 ? `Rank ${RANKS[hunterRank(state)]}` : 'Sem rank'}</button>
         <span class="chip" data-tip="Sequência atual · recorde ${d.streak.best}">🔥 ${d.streak.current} dia(s)</span>
         <span class="chip gold num">◈ ${fmt(d.coins)} moedas</span>
         <span class="chip" data-tip="Escudos protegem a sequência em dias perdidos">${icon('shield')} ${d.streak.shieldsLeft} escudo(s)</span>

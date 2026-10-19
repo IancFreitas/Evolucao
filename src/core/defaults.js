@@ -56,6 +56,8 @@ export const DEFAULT_RULES = {
   backdateDays: 2,
   // Janela para confirmar registros importados de integrações (dias)
   importWindowDays: 30,
+  // Horas que o portão de uma dungeon fica fechado após falhar no chefe
+  dungeonCooldownHours: 48,
   // XP padrão por tipo de missão (diárias usam o XP da atividade)
   missionTypeXp: { daily: 0, weekly: 100, main: 300, special: 80, boss: 500 },
   // Bônus de retomada após pausa não planejada
@@ -138,6 +140,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
     inventory: [],
     pending: [],
     inbox: [],
+    dungeons: {},
     meta: { backups: 0, lastBackupAt: null, lastNotified: {}, addedActivities: ['passos'] },
   };
 }
