@@ -129,7 +129,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
   return {
     version: SCHEMA_VERSION,
     createdAt: Date.now(),
-    profile: { name, activeTitle: null, theme: 'azul', onboarded: true },
+    profile: { name, activeTitle: null, theme: 'azul', onboarded: true, easyRead: true },
     settings: {
       rules: structuredClone(DEFAULT_RULES),
       activities: structuredClone(DEFAULT_ACTIVITIES),

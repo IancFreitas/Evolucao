@@ -732,6 +732,7 @@ export function updateProfile(state, patch) {
     if (!derive(state).perks.themes.includes(patch.theme)) throw new RuleError('Tema bloqueado: evolua de classe para liberar.');
     p.theme = patch.theme;
   }
+  if (patch.easyRead !== undefined) p.easyRead = !!patch.easyRead;
   return p;
 }
 

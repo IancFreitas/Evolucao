@@ -21,6 +21,9 @@ function profileTab(c) {
     Mudou algo na sua vida? Refaça a entrevista e o Sistema se adapta.<div class="row wrap mt-s"><button class="btn sm primary" data-action="awaken-start">${c.state.profile.personalizedAt ? 'Refazer personalização' : 'Personalizar agora'}</button></div></div>
     <form data-form="profile" class="form-grid"><label class="field">Nome do personagem<input name="name" maxlength="40" value="${esc(c.state.profile.name)}"></label>
     <div class="full"><button class="btn primary sm">Salvar</button></div></form>
+    <div class="hud mt">Leitura</div>
+    <label class="check mt-s"><input type="checkbox" data-change="easy-read" ${c.state.profile.easyRead !== false ? 'checked' : ''}>
+      <span><b>Leitura fácil (dislexia)</b><br><span class="muted">Letras maiores e mais espaçadas, sem texto todo em maiúsculas.</span></span></label>
     <div class="hud mt">Tema visual</div>
     <div class="chips">${Object.entries(THEMES).map(([k, t]) => {
       const unlocked = c.d.perks.themes.includes(k);
@@ -346,6 +349,7 @@ const actions = {
 };
 
 const changes = {
+  'easy-read': (el) => run((s) => E.updateProfile(s, { easyRead: el.checked }), null, { quiet: true }),
   'notif-master': async (el) => {
     if (el.checked && permission() !== 'granted' && permission() !== 'unsupported') await requestPermission();
     run((s) => { s.settings.notifications.enabled = el.checked; }, null, { quiet: true });

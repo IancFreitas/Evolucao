@@ -378,3 +378,13 @@ test('migração adiciona as atividades de idiomas a dados antigos', () => {
   assert.ok(m.settings.activities.some((a) => a.key === 'ingles'));
   assert.ok(m.settings.activities.some((a) => a.key === 'espanhol'));
 });
+
+test('leitura fácil vem ligada e pode ser desligada', () => {
+  const s = fresh();
+  assert.equal(s.profile.easyRead, true);
+  const old = fresh();
+  delete old.profile.easyRead;
+  assert.equal(migrate(old).profile.easyRead, true);
+  E.updateProfile(s, { easyRead: false });
+  assert.equal(migrate(s).profile.easyRead, false);
+});

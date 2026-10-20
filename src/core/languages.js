@@ -76,17 +76,17 @@ const PHRASES = {
 };
 
 /**
- * Micro-práticas de 2 a 10 minutos. As marcadas com `home` combinam com arrumar a casa:
- * você não precisa separar um tempo extra para elas.
+ * Micro-práticas de 2 a 10 minutos, com nomes curtos (pensadas para dislexia: falar e ouvir, quase nada
+ * de escrita). As marcadas com `home` combinam com arrumar a casa: não precisa separar um tempo extra.
  */
 export const PRACTICES = [
-  { id: 'frase', icon: '🗣️', label: 'Repeti a frase do dia em voz alta', minutes: 2 },
-  { id: 'narrar', icon: '🧹', label: 'Narrei o que eu fazia enquanto arrumava a casa', minutes: 5, home: true },
-  { id: 'ouvir', icon: '🎧', label: 'Ouvi música ou podcast arrumando a casa', minutes: 10, home: true },
-  { id: 'rotular', icon: '🏷️', label: 'Falei o nome de 5 objetos da casa', minutes: 2, home: true },
-  { id: 'app', icon: '📱', label: 'Fiz uma lição curta (Duolingo ou similar)', minutes: 5 },
-  { id: 'escrever', icon: '✍️', label: 'Escrevi uma frase minha sobre o dia', minutes: 3 },
-  { id: 'assistir', icon: '🎬', label: 'Vi um vídeo ou série no idioma', minutes: 10 },
+  { id: 'frase', icon: '🗣️', label: 'Repeti a frase', minutes: 2 },
+  { id: 'narrar', icon: '🧹', label: 'Narrei a arrumação', minutes: 5, home: true },
+  { id: 'ouvir', icon: '🎧', label: 'Ouvi arrumando', minutes: 10, home: true },
+  { id: 'rotular', icon: '🏷️', label: 'Nomeei 5 objetos', minutes: 2, home: true },
+  { id: 'app', icon: '📱', label: 'Lição no app', minutes: 5 },
+  { id: 'falar', icon: '💬', label: 'Contei meu dia', minutes: 3 },
+  { id: 'assistir', icon: '🎬', label: 'Vi um vídeo', minutes: 10 },
 ];
 
 export const practiceInfo = (id) => PRACTICES.find((p) => p.id === id);

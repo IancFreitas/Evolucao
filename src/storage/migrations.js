@@ -20,7 +20,7 @@ function fill(target, defaults) {
 export function migrate(raw) {
   if (!isObj(raw)) throw new Error('Dados inválidos.');
   const s = structuredClone(raw);
-  s.profile = fill(isObj(s.profile) ? s.profile : {}, { name: 'Jogador', activeTitle: null, theme: 'azul', onboarded: true });
+  s.profile = fill(isObj(s.profile) ? s.profile : {}, { name: 'Jogador', activeTitle: null, theme: 'azul', onboarded: true, easyRead: true });
   s.settings = isObj(s.settings) ? s.settings : {};
   const hadDifficulty = isObj(s.settings.rules) && 'difficulty' in s.settings.rules;
   const r0 = isObj(s.settings.rules) ? s.settings.rules : {};

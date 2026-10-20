@@ -159,6 +159,7 @@ function applyTheme(state) {
   const t = THEMES[state.profile.theme] || THEMES.azul;
   document.documentElement.style.setProperty('--accent', t.accent);
   document.documentElement.style.setProperty('--accent2', t.accent2);
+  document.documentElement.classList.toggle('easy-read', state.profile.easyRead !== false);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', '#04050c');
 }
 
