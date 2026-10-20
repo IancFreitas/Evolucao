@@ -31,7 +31,8 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Missões | Diárias (dias da semana, essenciais, versão leve), semanais, principais (progresso + marcos 25/50/75%), especiais, Boss Battles (etapas e HP). Criar, editar, adiar, pausar, concluir, desfazer, excluir |
 | Dungeons | 42 dungeons (7 áreas × ranks E→S) com requisitos medidos pelos registros, chefe final com prazo, portão fechado por 48h (configurável) após derrota sem perder os requisitos, rank por área e rank geral (4 áreas no mesmo rank) |
 | Classes | Nascem dos atributos mais desenvolvidos e mudam com eles: 7 classes puras (ex.: Arcanista), 21 híbridas (ex.: Sábio = INT+WIS) e a rara Harmonista (tudo equilibrado). O nível define o grau (Iniciante → Ascendente) e os benefícios |
-| Conquistas | 33 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
+| Idiomas | Tela **Idiomas** (inglês e espanhol) sem cobrança: frase do dia, micro-práticas de 2–10 min (várias feitas enquanto arruma a casa), sem missão, prazo ou sequência. Cada prática vale XP, INT e CHA, até 2 por idioma por dia |
+| Conquistas | 36 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |
 | Análise | XP diário/semanal/mensal, radar e evolução dos atributos, hábitos por dia, mapa de consistência, missões principais, histórico de níveis, áreas de dedicação e de atenção, recordes |
 | Recuperação | Estados do dia (normal, difícil, descanso planejado, doente, imprevisto), dias protegidos, escudos semanais, bônus de retomada, conquista "Fênix", recordes nunca perdidos |

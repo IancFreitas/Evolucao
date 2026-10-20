@@ -346,3 +346,35 @@ test('rank geral exige 4 áreas no rank', () => {
   s.dungeons['VIT-E'] = { clearedAt: now };
   assert.equal(hunterRank(s), 0);
 });
+
+test('idiomas: prática registra XP sem criar missões e respeita o limite diário', async () => {
+  const { phraseOfDay, languageSummary } = await import('../src/core/languages.js');
+  const s = fresh();
+  const today = E.todayKey(s);
+  const missions = s.missions.length;
+  const { result } = E.act(s, (st) => E.logLanguage(st, 'espanhol', 'ouvir'));
+  assert.equal(result.activity, 'espanhol');
+  assert.equal(result.practice, 'ouvir');
+  assert.ok(result.xp > 0 && result.attrs.INT > 0 && result.attrs.CHA > 0);
+  assert.equal(s.missions.length, missions);
+  assert.ok(s.achievements['idioma-1']);
+  advance(30);
+  E.logLanguage(s, 'espanhol', 'frase');
+  advance(30);
+  assert.throws(() => E.logLanguage(s, 'espanhol', 'app'), E.RuleError);
+  assert.throws(() => E.logLanguage(s, 'frances', 'app'), E.RuleError);
+  const sum = languageSummary(s, 'espanhol', today);
+  assert.equal(sum.today, 2);
+  assert.equal(sum.recentDays, 1);
+  assert.equal(sum.minutes, 12);
+  assert.notDeepEqual(phraseOfDay('ingles', today), phraseOfDay('ingles', addDays(today, 1)));
+});
+
+test('migração adiciona as atividades de idiomas a dados antigos', () => {
+  const old = fresh();
+  old.settings.activities = old.settings.activities.filter((a) => !['ingles', 'espanhol'].includes(a.key));
+  old.meta.addedActivities = ['passos'];
+  const m = migrate(old);
+  assert.ok(m.settings.activities.some((a) => a.key === 'ingles'));
+  assert.ok(m.settings.activities.some((a) => a.key === 'espanhol'));
+});

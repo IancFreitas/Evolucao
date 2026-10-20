@@ -17,13 +17,14 @@ import statusView from './views/status.js';
 import missionsView from './views/missions.js';
 import dungeonsView from './views/dungeons.js';
 import logView from './views/log.js';
+import languagesView from './views/languages.js';
 import analyticsView from './views/analytics.js';
 import achievementsView from './views/achievements.js';
 import shopView from './views/shop.js';
 import historyView from './views/history.js';
 import settingsView from './views/settings.js';
 
-const VIEWS = [statusView, missionsView, dungeonsView, logView, analyticsView, achievementsView, shopView, historyView, settingsView];
+const VIEWS = [statusView, missionsView, dungeonsView, logView, languagesView, analyticsView, achievementsView, shopView, historyView, settingsView];
 const MOBILE_NAV = ['status', 'missions', 'dungeons', 'log'];
 
 /* ------------------------------ Store ------------------------------ */

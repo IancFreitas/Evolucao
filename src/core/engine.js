@@ -12,6 +12,9 @@ import {
 import { computeStreak, effortDays, inactiveGapBefore } from './streaks.js';
 import { ACHIEVEMENTS, RARITY } from './achievements.js';
 import { RANKS, areaRanks, dungeonDef, dungeonStatus, hunterRank } from './dungeons.js';
+import { LANGUAGES, practiceInfo } from './languages.js';
+
+const LANGUAGE_KEYS = LANGUAGES.map((l) => l.key);
 
 export { RuleError };
 
@@ -49,6 +52,7 @@ export function computeStats(state, d = derive(state)) {
   const attrDaySets = Object.fromEntries(ATTR_KEYS.map((k) => [k, new Set()]));
   const activityDaySets = {};
   const restDays = new Set();
+  const languageDays = new Set();
   const s = {
     totalXp: d.totalXp, level: d.level.level, bestStreak: d.streak.best,
     effortEntries: 0, perfectDays: 0, bossesDefeated: 0, mainCompleted: 0, weeklyCompleted: 0,
@@ -62,6 +66,7 @@ export function computeStats(state, d = derive(state)) {
       for (const [k, v] of Object.entries(e.attrs || {})) if (v > 0 && attrDaySets[k]) attrDaySets[k].add(e.date);
       if (e.activity) (activityDaySets[e.activity] ||= new Set()).add(e.date);
       if (e.activity === 'descanso') restDays.add(e.date);
+      if (LANGUAGE_KEYS.includes(e.activity)) languageDays.add(e.date);
     }
     if (e.kind === 'bonus') s.perfectDays++;
     if (e.kind === 'comeback') s.comebacks++;
@@ -77,6 +82,7 @@ export function computeStats(state, d = derive(state)) {
   s.attrDays = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrDaySets[k].size]));
   s.activityDays = Object.fromEntries(Object.entries(activityDaySets).map(([k, v]) => [k, v.size]));
   s.restDays = restDays.size;
+  s.languageDays = languageDays.size;
   const ar = Object.values(areaRanks(state));
   s.dungeonsCleared = Object.values(state.dungeons || {}).filter((r) => r.clearedAt).length;
   s.maxAreaRank = Math.max(-1, ...ar);
@@ -399,6 +405,19 @@ export function logActivity(state, activityKey, opts = {}, today = todayKey(stat
     note: opts.note ? String(opts.note).slice(0, 300) : undefined, ts: clock.now(), backdated: date !== today,
   });
   checkComeback(state, date, today);
+  return entry;
+}
+
+/** Registra uma micro-prática de idioma. Usa as mesmas regras de qualquer atividade (limite diário, intervalo). */
+export function logLanguage(state, lang, practiceId, opts = {}, today = todayKey(state)) {
+  if (!LANGUAGE_KEYS.includes(lang)) throw new RuleError('Idioma não encontrado.');
+  const practice = practiceInfo(practiceId);
+  if (!practice) throw new RuleError('Prática não encontrada.');
+  if (!state.settings.activities.some((a) => a.key === lang)) {
+    throw new RuleError('A atividade deste idioma foi excluída. Recrie-a em Ajustes → Atividades.');
+  }
+  const entry = logActivity(state, lang, { ...opts, note: opts.note || practice.label }, today);
+  entry.practice = practice.id;
   return entry;
 }
 

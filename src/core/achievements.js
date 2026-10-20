@@ -47,6 +47,9 @@ export const ACHIEVEMENTS = [
   A('dg-a', 'Conquistador de Abismos', 'Alcance o Rank A em uma área.', '🌋', 'epico', (s) => s.maxAreaRank + 1, 5, 'Conquistador de Abismos'),
   A('dg-s', 'Soberano da Área', 'Alcance o Rank S em uma área.', '👁️‍🗨️', 'lendario', (s) => s.maxAreaRank + 1, 6, 'Soberano'),
   A('rank-s', 'Rank S', 'Rank geral S: quatro áreas no Rank S.', '⚡', 'lendario', (s) => s.hunterRank + 1, 6, 'Rank S'),
+  A('idioma-1', 'Primeiras Palavras', 'Pratique um idioma pela primeira vez.', '💬', 'comum', (s) => s.languageDays, 1),
+  A('idioma-10', 'Ponte entre Línguas', '10 dias praticando inglês ou espanhol, sem pressa.', '🌉', 'raro', (s) => s.languageDays, 10),
+  A('idioma-dois', 'Duas Vozes', 'Pratique inglês e espanhol em 5 dias cada.', '🌎', 'raro', (s) => Math.min(s.activityDays.ingles || 0, s.activityDays.espanhol || 0), 5, 'Poliglota em Formação'),
   A('loja-1', 'Recompensa Merecida', 'Troque moedas por uma recompensa.', '🎁', 'comum', (s) => s.purchases, 1),
   A('backup-1', 'Guardião dos Registros', 'Exporte um backup dos seus dados.', '💾', 'comum', (s) => s.backups, 1),
 ];
