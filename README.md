@@ -24,7 +24,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Área | Funcionalidades |
 | --- | --- |
 | Personagem | Nome, classe, título ativo, nível, barra de XP, moedas, sequência, escudos |
-| Personalização | Entrevista "Despertar" ao entrar: história de vida, rotina, prioridades e focos por área, metas, limitações e recompensas viram missões, atividades, Boss e loja sob medida. Opção de ser entrevistado pelo Claude e colar o perfil |
+| Personalização | Entrevista "Despertar" ao entrar: história de vida (dá para ditar pelo microfone), rotina, prioridades e focos por área, metas, ritmo (**leve, sem cobrança** ou normal), idiomas, leitura fácil, limitações e recompensas viram missões, atividades, Boss e loja sob medida. Opção de pedir ao Claude um perfil feito a partir do que ele já sabe de você (memória e conversas anteriores), perguntando só o que faltar, e colar no app |
 | Atributos | STR, END, INT, WIS, DISC, CHA, VIT, que evoluem **apenas** por ações registradas |
 | XP | Valores configuráveis por atividade e por tipo de missão, curva progressiva editável, bônus diário |
 | Anti-exploração | Conclusão única por período, retornos decrescentes, limite diário, intervalo mínimo, sem registros futuros, retroativos limitados, chaves únicas no livro-razão |

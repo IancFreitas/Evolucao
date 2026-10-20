@@ -712,6 +712,8 @@ export function applyPersonalization(state, plan, { replace = true } = {}, today
   state.profile.life = { ...plan.profile, updatedAt: clock.now() };
   state.profile.personalizedAt = clock.now();
   updateRules(state, { difficulty: plan.rules.difficulty, dayStartHour: plan.rules.dayStartHour });
+  if (Array.isArray(plan.languages)) for (const k of LANGUAGE_KEYS) toggleLanguage(state, k, plan.languages.includes(k));
+  if (plan.easyRead !== undefined) state.profile.easyRead = !!plan.easyRead;
   state.settings.health.sleepGoal = plan.health.sleepGoal;
   for (const a of plan.activities) {
     const exists = state.settings.activities.find((x) => x.key === a.key);

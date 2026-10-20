@@ -4,6 +4,7 @@
 import { addDays } from './dates.js';
 import { ATTR_KEYS, uid } from './defaults.js';
 import { DIFFICULTY } from './levels.js';
+import { LANGUAGE_KEYS } from './languages.js';
 
 export const PRIORITY_WEIGHT = { alta: 3, media: 2, baixa: 1 };
 const AREA_ICON = { STR: '🏋️', END: '🏃', INT: '📚', WIS: '🧭', DISC: '🛡️', CHA: '🤝', VIT: '🌿' };
@@ -60,6 +61,10 @@ export function storyHints(story = '') {
     focus,
     finance: /dinheiro|d[ií]vida|finan|investi|economizar|sal[aá]rio/i.test(story),
     limitation: LIMITATION_WORDS.some((w) => story.toLowerCase().includes(w)),
+    home: /arruma|organizar a casa|casa nova|mudan[cç]a|reforma|faxina|destralh/i.test(story),
+    dyslexia: /dislex/i.test(story),
+    languages: [['ingles', /ingl[eê]s/i], ['espanhol', /espanhol/i], ['chines', /chin[eê]s|mandarim/i]].filter(([, re]) => re.test(story)).map(([k]) => k),
+    light: /sem (muita )?cobran[cç]a|sem press[aã]o|cansad|sobrecarreg|muita coisa/i.test(story),
   };
 }
 
@@ -92,7 +97,8 @@ export function buildPlan(answers, today) {
   const careful = !!a.limitations || hints.limitation;
   const weight = (k) => PRIORITY_WEIGHT[a.priorities[k]] || 2;
   const ranked = [...ATTR_KEYS].sort((x, y) => weight(y) - weight(x));
-  const slots = a.dailyMinutes <= 20 ? 2 : a.dailyMinutes <= 45 ? 3 : a.dailyMinutes <= 90 ? 4 : 5;
+  const leve = a.pace === 'leve';
+  const slots = Math.min(leve ? 2 : 5, a.dailyMinutes <= 20 ? 2 : a.dailyMinutes <= 45 ? 3 : a.dailyMinutes <= 90 ? 4 : 5);
   const essentials = new Set(ranked.filter((k) => weight(k) >= 2).slice(0, slots));
   const train = a.trainingDays.length ? a.trainingDays : [1, 3, 5];
 
@@ -122,20 +128,27 @@ export function buildPlan(answers, today) {
     missions.push(daily('END', `Cardio: ${f('END', '30 minutos')}`, cardioDays.length ? cardioDays : [2, 4, 6], 'Caminhada leve de 10 min'));
   }
   if (want('INT')) missions.push(daily('INT', `Estudo focado: ${f('INT', 'sessão de 50 min')}`, a.occupation === 'trabalho' ? [1, 2, 3, 4, 5, 6] : WEEKDAYS, 'Revisar anotações por 10 min'));
-  if (weight('INT') >= 3) missions.push({ ...daily('INT', 'Ler por 20 minutos', ALL_DAYS, 'Ler 5 páginas'), activity: 'leitura', essential: false });
-  if (want('WIS')) missions.push(daily('WIS', `Reflexão (10 min)${a.focus.WIS ? `: ${a.focus.WIS}` : ''}`, ALL_DAYS, 'Escrever 3 linhas sobre o dia'));
+  // Com leitura fácil (dislexia), ouvir conta como ler e falar conta como escrever.
+  const easy = a.easyRead;
+  if (weight('INT') >= 3) missions.push({ ...daily('INT', easy ? 'Ouvir ou ler por 20 minutos' : 'Ler por 20 minutos', ALL_DAYS, easy ? 'Ouvir 5 min de audiolivro ou podcast' : 'Ler 5 páginas'), activity: 'leitura', essential: false });
+  if (want('WIS')) missions.push(daily('WIS', `Reflexão (10 min)${a.focus.WIS ? `: ${a.focus.WIS}` : ''}`, ALL_DAYS, easy ? 'Gravar 1 min de áudio sobre o dia' : 'Escrever 3 linhas sobre o dia'));
   if (want('DISC')) missions.push(daily('DISC', 'Planejar o dia (5 min)', ALL_DAYS, 'Escolher 1 prioridade do dia'));
   if (want('CHA')) missions.push(daily('CHA', `Social: ${a.focus.CHA || 'conversa de verdade com alguém'}`, [2, 4, 6], 'Mandar uma mensagem para alguém importante'));
   if (want('VIT')) missions.push({ ...daily('VIT', `Dormir até ${a.sleep || '23:00'}`, ALL_DAYS, 'Sem telas 30 min antes de dormir'), activity: 'sono' });
+  // Arrumando a casa: conta como progresso, mas nunca como obrigação.
+  if (hints.home) {
+    missions.push({ ...daily('DISC', 'Arrumar um pouco da casa', ALL_DAYS, 'Organizar uma gaveta ou superfície (5 min)'), activity: 'domestica', essential: false });
+  }
 
   // Semanais
   missions.push({ type: 'weekly', title: 'Revisão semanal e planejamento', activity: 'planejamento', description: 'O que funcionou, o que mudar, prioridades da próxima semana.' });
-  if (hints.finance || weight('WIS') >= 3) missions.push({ type: 'weekly', title: 'Organização financeira da semana', activity: 'financas', xp: 80 });
+  if ((hints.finance && !leve) || weight('WIS') >= 3) missions.push({ type: 'weekly', title: 'Organização financeira da semana', activity: 'financas', xp: 80 });
   const weeklyByArea = {
     STR: `Semana completa de treinos (${train.length}x)`, END: 'Bater a meta semanal de cardio', INT: `Concluir um módulo de ${f('INT', 'estudo')}`,
     WIS: 'Uma decisão importante pensada por escrito', DISC: 'Semana sem adiar missões essenciais', CHA: 'Encontro com amigos ou família', VIT: '5 noites de sono adequado',
   };
-  for (const k of ranked.filter((x) => weight(x) >= 3)) {
+  if (hints.home) missions.push({ type: 'weekly', title: 'Um cômodo ou canto da casa organizado', activity: 'domestica', xp: 100 });
+  for (const k of ranked.filter((x) => weight(x) >= 3 && !leve)) {
     missions.push({ type: 'weekly', title: weeklyByArea[k], activity: activityFor[k], xp: 120 });
   }
 
@@ -162,10 +175,13 @@ export function buildPlan(answers, today) {
     missions: missions.map((m) => ({ id: uid('m-'), ...m })),
     rewards,
     health: { sleepGoal: sleepGoalFrom(a.wake, a.sleep) },
+    languages: a.languages,
+    easyRead: a.easyRead,
     rules: { difficulty: DIFFICULTY[a.difficulty] ? a.difficulty : 'dificil', dayStartHour: sleepMin != null && sleepMin < 360 ? Math.min(8, Math.floor(sleepMin / 60) + 2) : 4 },
     profile: {
       name: a.name, occupation: a.occupation, story: a.story, limitations: a.limitations, focus: a.focus,
       priorities: a.priorities, goals: a.goals, wake: a.wake, sleep: a.sleep, dailyMinutes: a.dailyMinutes,
+      pace: a.pace, languages: a.languages, easyRead: a.easyRead,
     },
   };
 }
@@ -193,6 +209,10 @@ export function normalizeAnswers(x = {}) {
     limitations: str(x.limitations, 400),
     rewards: (Array.isArray(x.rewards) ? x.rewards : []).filter((k) => REWARD_TEMPLATES[k]),
     difficulty: DIFFICULTY[x.difficulty] ? x.difficulty : 'dificil',
+    // Ritmo: "leve" = fase corrida, no máximo 2 missões essenciais e nenhuma semanal extra.
+    pace: x.pace === 'leve' ? 'leve' : 'normal',
+    languages: (Array.isArray(x.languages) ? x.languages : []).filter((k) => LANGUAGE_KEYS.includes(k)),
+    easyRead: x.easyRead === true || x.easyRead === 'true',
   };
 }
 

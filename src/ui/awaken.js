@@ -4,10 +4,11 @@ import { ATTRIBUTES, createInitialState } from '../core/defaults.js';
 import { weekdayName } from '../core/dates.js';
 import { DIFFICULTY, totalXpForLevel } from '../core/levels.js';
 import { REWARD_CHOICES, buildPlan, parseClaudeProfile, storyHints } from '../core/personalize.js';
+import { LANGUAGES } from '../core/languages.js';
 import { closeModal, esc, icon, logo, openModal, toast } from './dom.js';
 import { navigate, render, run, store } from './app.js';
 
-const STEPS = ['Início', 'Sua história', 'Rotina', 'Áreas da vida', 'Metas', 'Limites e recompensas', 'Dificuldade'];
+const STEPS = ['Início', 'Sua história', 'Rotina', 'Áreas da vida', 'Metas', 'Ritmo e recompensas', 'Dificuldade'];
 const DRAFT_KEY = 'system-ascension:awaken-draft';
 
 export const wizard = { active: false, step: 0, answers: {}, mode: 'new' };
@@ -42,8 +43,10 @@ const FOCUS_EXAMPLES = {
   VIT: 'ex.: dormir melhor, alimentação',
 };
 
-export const CLAUDE_PROMPT = `Você vai me entrevistar para personalizar meu app System Ascension, um RPG de evolução pessoal.
-Faça perguntas, no máximo duas por vez, sobre toda a minha vida: rotina, trabalho e estudos, treino e saúde, sono,
+export const CLAUDE_PROMPT = `Você vai me ajudar a personalizar meu app System Ascension, um RPG de evolução pessoal.
+PRIMEIRO use o que você já sabe sobre mim: sua memória e nossas conversas anteriores (se tiver acesso, procure nelas).
+Me mostre em poucas linhas curtas o que já sabe. Depois pergunte SÓ o que faltar, com frases curtas e simples,
+no máximo duas perguntas por vez, sobre toda a minha vida: rotina, trabalho e estudos, treino e saúde, sono,
 relacionamentos, finanças, hábitos que quero criar ou abandonar, sonhos, metas e limitações físicas.
 Quando tiver informação suficiente, responda APENAS com um bloco JSON neste formato:
 {"ascension_profile":{
@@ -55,9 +58,12 @@ Quando tiver informação suficiente, responda APENAS com um bloco JSON neste fo
  "goals":[{"title":"meta grande","area":"INT","months":12}],
  "limitations":"limitações físicas ou de saúde, se houver",
  "rewards":["serie","jogo","cafe","comida","passeio","livro","compra","descanso"],
+ "pace":"leve|normal","languages":["ingles","espanhol","chines"],"easyRead":false,
  "difficulty":"casual|dificil|monarca"}}
 Áreas: STR força/musculação, END cardio/condicionamento, INT estudos/programação/leitura, WIS reflexão/planejamento/finanças,
 DISC hábitos e compromissos, CHA comunicação/relacionamentos, VIT sono/recuperação/autocuidado.
+pace "leve" = fase corrida ou cansativa, quero pouca cobrança. languages: só os idiomas que eu quero praticar.
+easyRead true se eu tiver dislexia ou preferir letras maiores. Se eu não souber algo, use um valor razoável e me diga.
 trainingDays: 0=domingo ... 6=sábado. Até 3 metas, a primeira é a mais importante. Escolha só recompensas que eu mencionar gostar.`;
 
 /* ------------------------------ Passos ------------------------------ */
@@ -72,7 +78,8 @@ function stepBody(step, a) {
         <label class="field">Nome do personagem<input name="name" required maxlength="40" value="${esc(a.name || '')}" placeholder="Seu nome ou apelido" autocomplete="nickname"></label>`;
     case 1:
       return `<h2 class="wz-h">Conte sua história</h2>
-        <p class="muted">Escreva com as suas palavras. Quanto mais você contar, mais personalizado fica. Algumas ideias:</p>
+        <p class="muted">Escreva com as suas palavras. Quanto mais você contar, mais personalizado fica.
+        🎤 Prefere falar? Toque no microfone do teclado e dite. Algumas ideias:</p>
         <ul class="tl-sub" style="margin-top:0">
           <li>Como é o seu dia hoje, do acordar ao dormir? Estuda, trabalha, os dois?</li>
           <li>Como está o seu corpo: treina, pratica esporte, como anda o sono?</li>
@@ -118,11 +125,20 @@ function stepBody(step, a) {
           <label class="field">Área<select name="goal_area_${i}">${ATTRIBUTES.map((t) => `<option value="${t.key}" ${goals[i]?.area === t.key ? 'selected' : ''}>${t.key} · ${esc(t.name)}</option>`).join('')}</select></label>
           <label class="field">Prazo<select name="goal_months_${i}">${[1, 3, 6, 12, 24, 36].map((m) => `<option value="${m}" ${Number(goals[i]?.months || 6) === m ? 'selected' : ''}>${m < 12 ? `${m} mês(es)` : `${m / 12} ano(s)`}</option>`).join('')}</select></label></div>`).join('')}</div>`;
     }
-    case 5:
-      return `<h2 class="wz-h">Limites e recompensas</h2>
-        <label class="field">Limitações físicas ou de saúde (opcional)<textarea name="limitations" rows="3" maxlength="400" placeholder="Ex.: dor no joelho, asma. As missões físicas vão sugerir versões mais seguras.">${esc(a.limitations || '')}</textarea></label>
+    case 5: {
+      const hints = storyHints(a.story || '');
+      const pace = a.pace || (hints.light || hints.home ? 'leve' : 'normal');
+      const langs = a.languages || hints.languages;
+      const easy = a.easyRead ?? hints.dyslexia;
+      return `<h2 class="wz-h">Ritmo e recompensas</h2>
+        <div class="field">Como está a sua fase agora?<div class="day-status">${[['leve', '🌱 Leve, sem cobrança', 'Muita coisa acontecendo. No máximo 2 missões essenciais por dia.'], ['normal', '⚔️ Normal', 'Tenho tempo e energia para uma rotina completa.']].map(([v, l, d]) => `<label class="ds" style="cursor:pointer"><input type="radio" name="pace" value="${v}" ${pace === v ? 'checked' : ''} class="sr"><b>${l}</b><small>${d}</small></label>`).join('')}</div></div>
+        <div class="field mt">Idiomas que quero praticar (opcional)<div class="chips">${LANGUAGES.map((l) => `<label class="chip" style="cursor:pointer"><input type="checkbox" name="languages[]" value="${l.key}" ${langs.includes(l.key) ? 'checked' : ''}> ${l.flag} ${l.name}</label>`).join('')}</div></div>
+        <label class="check"><input type="checkbox" name="easyRead" value="true" ${easy ? 'checked' : ''}> 📖 Leitura fácil (dislexia): letras maiores e mais espaçadas</label>
+        <label class="field mt">Limitações físicas ou de saúde (opcional)
+        <textarea name="limitations" rows="3" maxlength="400" placeholder="Ex.: dor no joelho, asma. As missões físicas vão sugerir versões mais seguras.">${esc(a.limitations || '')}</textarea></label>
         <div class="tl-sub">O Sistema não substitui orientação profissional: em caso de dúvida, procure um profissional de saúde.</div>
         <div class="field mt">O que te motiva como recompensa?<div class="chips">${Object.entries(REWARD_CHOICES).map(([k, l]) => `<label class="chip" style="cursor:pointer"><input type="checkbox" name="rewards[]" value="${k}" ${(a.rewards || ['serie', 'cafe', 'passeio']).includes(k) ? 'checked' : ''}> ${esc(l)}</label>`).join('')}</div></div>`;
+    }
     case 6: {
       const plan = buildPlan(a, E.todayKey(store.state || { settings: { rules: { dayStartHour: 4 } } }));
       const dailies = plan.missions.filter((m) => m.type === 'daily');
@@ -171,7 +187,7 @@ function collect(step, data) {
     a.focus = Object.fromEntries(ATTRIBUTES.map((t) => [t.key, data[`focus_${t.key}`] || '']));
   }
   if (step === 4) a.goals = [0, 1, 2].map((i) => ({ title: data[`goal_title_${i}`], area: data[`goal_area_${i}`], months: Number(data[`goal_months_${i}`]) })).filter((g) => g.title?.trim());
-  if (step === 5) Object.assign(a, { limitations: data.limitations, rewards: data.rewards || [] });
+  if (step === 5) Object.assign(a, { limitations: data.limitations, rewards: data.rewards || [], pace: data.pace || 'normal', languages: data.languages || [], easyRead: data.easyRead === 'true' });
   if (step === 6) a.difficulty = data.difficulty;
 }
 

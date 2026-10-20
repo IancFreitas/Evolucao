@@ -398,3 +398,26 @@ test('leitura fácil vem desligada e cada pessoa liga a sua', () => {
   E.updateProfile(s, { easyRead: true });
   assert.equal(migrate(s).profile.easyRead, true);
 });
+
+test('personalização entende fase leve, casa, idiomas e leitura fácil', () => {
+  const story = 'Estou arrumando a casa e tenho feito muita coisa. Tenho dislexia. Quero treinar inglês e aprender espanhol e chinês, sem muita cobrança.';
+  const h = storyHints(story);
+  assert.ok(h.home && h.dyslexia && h.light);
+  assert.deepEqual(h.languages, ['ingles', 'espanhol', 'chines']);
+  const base = { name: 'Ian', story, dailyMinutes: 180, goals: [{ title: 'Organizar a casa', area: 'DISC', months: 1 }],
+    priorities: { STR: 'alta', END: 'alta', INT: 'alta', WIS: 'alta', DISC: 'alta', CHA: 'alta', VIT: 'alta' } };
+  const leve = buildPlan({ ...base, pace: 'leve', languages: ['ingles', 'chines', 'klingon'], easyRead: true }, '2026-10-14');
+  const normal = buildPlan(base, '2026-10-14');
+  const essentials = (p) => p.missions.filter((m) => m.type === 'daily' && m.essential).length;
+  assert.ok(essentials(leve) <= 2 && essentials(normal) > 2);
+  assert.ok(leve.missions.filter((m) => m.type === 'weekly').length < normal.missions.filter((m) => m.type === 'weekly').length);
+  assert.ok(leve.missions.some((m) => m.activity === 'domestica' && !m.essential));
+  assert.deepEqual(leve.languages, ['ingles', 'chines']);
+  const s = fresh();
+  E.applyPersonalization(s, leve);
+  assert.deepEqual(s.profile.languages, ['ingles', 'chines']);
+  assert.equal(s.profile.easyRead, true);
+  assert.ok(s.settings.activities.some((a) => a.key === 'chines'));
+  E.applyPersonalization(s, normal, { replace: true });
+  assert.deepEqual(s.profile.languages, []);
+});
