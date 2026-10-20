@@ -525,3 +525,12 @@ details.box summary { cursor: pointer; font-weight: 650; }
   .practice-grid { grid-template-columns: 1fr 1fr; }
   .lang-card .phrase { font-size: 25px; }
 }
+.lang-switch { grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); }
+.lang-switch button { padding: 12px 6px; }
+.phrase .w.zh { display: inline-flex; flex-direction: column; align-items: center; margin: 0 4px 6px 0; vertical-align: bottom; }
+.phrase .w.zh small { font-size: 0.75em; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; line-height: 1.3; }
+.phrase .w.zh.speaking small { color: #fff; }
+.lang-choose { display: flex; flex-direction: column; gap: 14px; }
+.lang-choose .check { font-size: 17px; }
+.lang-choose .flag { font-size: 22px; }
+.lang-switch button { flex-direction: column; gap: 2px; font-size: 16px; min-height: 64px; }

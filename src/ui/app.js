@@ -149,7 +149,7 @@ function showLevelUp(level, cls) {
 const root = () => document.getElementById('app');
 
 function navItems(c) {
-  return VIEWS.map((v) => {
+  return VIEWS.filter((v) => !v.hidden?.(c)).map((v) => {
     const badge = v.badge?.(c);
     return `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}<span>${v.title}</span>${badge ? `<span class="count">${badge}</span>` : ''}</button>`;
   }).join('');
@@ -159,7 +159,7 @@ function applyTheme(state) {
   const t = THEMES[state.profile.theme] || THEMES.azul;
   document.documentElement.style.setProperty('--accent', t.accent);
   document.documentElement.style.setProperty('--accent2', t.accent2);
-  document.documentElement.classList.toggle('easy-read', state.profile.easyRead !== false);
+  document.documentElement.classList.toggle('easy-read', !!state.profile.easyRead);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', '#04050c');
 }
 
@@ -187,7 +187,7 @@ export function render() {
       ${MOBILE_NAV.map((id) => { const v = VIEWS.find((x) => x.id === id); return `<button class="${ui.view === id ? 'active' : ''}" data-nav="${id}">${icon(v.icon)}${v.short || v.title}</button>`; }).join('')}
       <button class="${!MOBILE_NAV.includes(ui.view) ? 'active' : ''}" data-action="more">${icon('more')}Mais</button>
     </nav>
-    ${ui.moreOpen ? `<div class="more-sheet">${VIEWS.filter((v) => !MOBILE_NAV.includes(v.id)).map((v) => `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}${v.title}</button>`).join('')}</div>` : ''}
+    ${ui.moreOpen ? `<div class="more-sheet">${VIEWS.filter((v) => !MOBILE_NAV.includes(v.id) && !v.hidden?.(c)).map((v) => `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}${v.title}</button>`).join('')}</div>` : ''}
   </div>`;
   view.mounted?.(c);
 }

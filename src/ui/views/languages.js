@@ -1,5 +1,5 @@
 import * as E from '../../core/engine.js';
-import { LANGUAGES, PRACTICES, languageSummary, phraseOfDay } from '../../core/languages.js';
+import { LANGUAGES, PRACTICES, enabledLanguages, languageSummary, phraseOfDay } from '../../core/languages.js';
 import { esc } from '../dom.js';
 import { ctx, render as rerender, run, ui } from '../app.js';
 import { canSpeak, speak, wordSpans } from '../speech.js';
@@ -7,8 +7,30 @@ import { canSpeak, speak, wordSpans } from '../speech.js';
 // Pensada para dislexia: um idioma por vez, frase grande com áudio e destaque da palavra falada,
 // tradução só quando pedir, práticas com ícone e nome curto, quase nada para ler.
 
+/** Escolha de idiomas e da leitura fácil. Vale só para quem usa este aparelho. */
+export function languageChooser(c) {
+  const on = c.state.profile.languages || [];
+  return `<div class="lang-choose">${LANGUAGES.map((l) => `<label class="check"><input type="checkbox" data-change="lang-enable" data-lang="${l.key}" ${on.includes(l.key) ? 'checked' : ''}> <span class="flag">${l.flag}</span> ${l.name}</label>`).join('')}
+    <label class="check"><input type="checkbox" data-change="easy-read" ${c.state.profile.easyRead ? 'checked' : ''}> 📖 Leitura fácil (dislexia)</label></div>`;
+}
+
+// Chinês: pinyin grande (nosso alfabeto, tom no acento) com os caracteres pequenos em cima.
+const zhWords = (words) => {
+  let at = 0;
+  return words.map(([hz, py]) => {
+    const html = `<span class="w zh" data-at="${at}"><small lang="zh-CN">${esc(hz)}</small>${esc(py)}</span>`;
+    at += hz.length;
+    return html;
+  }).join(' ');
+};
+
 function render(c) {
-  const lang = LANGUAGES.find((l) => l.key === ui.tabs.languages) || LANGUAGES[0];
+  const mine = enabledLanguages(c.state);
+  if (!mine.length) {
+    return `<div class="page-head"><div><h1>Idiomas</h1><p class="lead">Escolha o que quer praticar.</p></div></div>
+      <div class="panel">${languageChooser(c)}<p class="hint">Só aparece para você, neste aparelho. Dá para mudar depois em Ajustes → Perfil.</p></div>`;
+  }
+  const lang = mine.find((l) => l.key === ui.tabs.languages) || mine[0];
   const act = c.state.settings.activities.find((a) => a.key === lang.key);
   const phrase = phraseOfDay(lang.key, c.today);
   const sum = languageSummary(c.state, lang.key, c.today);
@@ -18,12 +40,12 @@ function render(c) {
 
   return `<div class="page-head"><div><h1>Idiomas</h1><p class="lead">Sem cobrança. 2 minutos já contam.</p></div></div>
 
-    <div class="lang-switch" role="tablist">${LANGUAGES.map((l) => `<button role="tab" aria-selected="${l.key === lang.key}" class="${l.key === lang.key ? 'active' : ''}" data-action="lang-tab" data-lang="${l.key}">
+    <div class="lang-switch" role="tablist" style="--n:${mine.length}">${mine.map((l) => `<button role="tab" aria-selected="${l.key === lang.key}" class="${l.key === lang.key ? 'active' : ''}" data-action="lang-tab" data-lang="${l.key}">
       <span class="flag">${l.flag}</span>${l.name}</button>`).join('')}</div>
 
     <div class="panel mt lang-card">
       <div class="lang-label">Frase do dia</div>
-      <p class="phrase" id="phrase" lang="${lang.key === 'ingles' ? 'en' : 'es'}">${wordSpans(phrase.text, esc)}</p>
+      <p class="phrase" id="phrase" data-text="${esc(phrase.text)}" lang="${lang.voice}">${phrase.words ? zhWords(phrase.words) : wordSpans(phrase.text, esc)}</p>
       ${audio ? `<div class="row wrap"><button class="btn primary big" data-action="lang-say" data-lang="${lang.key}">🔊 Ouvir</button>
         <button class="btn big" data-action="lang-say" data-lang="${lang.key}" data-slow="1">🐢 Devagar</button></div>` : ''}
       ${showPt ? `<p class="phrase pt" id="phrase-pt" lang="pt-BR">${wordSpans(phrase.translation, esc)}</p>
@@ -40,14 +62,17 @@ function render(c) {
     </div>
 
     ${sum.totalDays ? `<div class="panel mt"><div class="lang-label">Seu caminho</div>
-      <div class="lang-stats"><div><b>${sum.recentDays}</b><span>dias no último mês</span></div><div><b>${sum.totalDays}</b><span>dias no total</span></div>${sum.minutes ? `<div><b>${sum.minutes}</b><span>minutos</span></div>` : ''}</div></div>` : ''}`;
+      <div class="lang-stats"><div><b>${sum.recentDays}</b><span>dias no último mês</span></div><div><b>${sum.totalDays}</b><span>dias no total</span></div>${sum.minutes ? `<div><b>${sum.minutes}</b><span>minutos</span></div>` : ''}</div></div>` : ''}
+
+    <details class="panel mt" ${ui.filters.langChooser ? 'open' : ''} data-toggle-key="langChooser"><summary class="lang-label" style="margin:0;cursor:pointer">⚙️ Escolher idiomas</summary>
+      <div class="mt-s">${languageChooser(c)}</div></details>`;
 }
 
 const actions = {
   'lang-tab': (el) => { ui.tabs.languages = el.dataset.lang; if (canSpeak()) speechSynthesis.cancel(); rerender(); },
   'lang-say': (el) => {
     const p = document.getElementById('phrase');
-    speak({ text: p.textContent, lang: el.dataset.lang, slow: !!el.dataset.slow, el: p });
+    speak({ text: p.dataset.text, lang: el.dataset.lang, slow: !!el.dataset.slow, el: p });
   },
   'lang-pt': (el) => { ui.filters.langPt = `${el.dataset.lang}:${ctx().today}`; rerender(); },
   'lang-say-pt': () => {
@@ -60,4 +85,12 @@ const actions = {
   },
 };
 
-export default { id: 'languages', title: 'Idiomas', icon: 'languages', render, actions };
+export const changes = {
+  'lang-enable': (el) => (ui.filters.langChooser = true) && run((s) => E.toggleLanguage(s, el.dataset.lang, el.checked), null, { quiet: true }),
+  'easy-read': (el) => run((s) => E.updateProfile(s, { easyRead: el.checked }), null, { quiet: true }),
+};
+
+export default {
+  id: 'languages', title: 'Idiomas', icon: 'languages', render, actions, changes,
+  hidden: (c) => !enabledLanguages(c.state).length,
+};

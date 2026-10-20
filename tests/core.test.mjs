@@ -352,6 +352,8 @@ test('idiomas: prática registra XP sem criar missões e respeita o limite diár
   const s = fresh();
   const today = E.todayKey(s);
   const missions = s.missions.length;
+  assert.throws(() => E.logLanguage(s, 'espanhol', 'ouvir'), E.RuleError);
+  E.toggleLanguage(s, 'espanhol', true);
   const { result } = E.act(s, (st) => E.logLanguage(st, 'espanhol', 'ouvir'));
   assert.equal(result.activity, 'espanhol');
   assert.equal(result.practice, 'ouvir');
@@ -370,21 +372,29 @@ test('idiomas: prática registra XP sem criar missões e respeita o limite diár
   assert.notDeepEqual(phraseOfDay('ingles', today), phraseOfDay('ingles', addDays(today, 1)));
 });
 
-test('migração adiciona as atividades de idiomas a dados antigos', () => {
-  const old = fresh();
-  old.settings.activities = old.settings.activities.filter((a) => !['ingles', 'espanhol'].includes(a.key));
-  old.meta.addedActivities = ['passos'];
-  const m = migrate(old);
-  assert.ok(m.settings.activities.some((a) => a.key === 'ingles'));
-  assert.ok(m.settings.activities.some((a) => a.key === 'espanhol'));
+test('idiomas só aparecem para quem escolhe, e o chinês tem pinyin', async () => {
+  const { enabledLanguages, phraseOfDay } = await import('../src/core/languages.js');
+  const s = fresh();
+  assert.equal(enabledLanguages(s).length, 0);
+  assert.ok(!s.settings.activities.some((a) => ['ingles', 'espanhol', 'chines'].includes(a.key)));
+  E.toggleLanguage(s, 'chines', true);
+  E.toggleLanguage(s, 'chines', true);
+  assert.deepEqual(s.profile.languages, ['chines']);
+  assert.equal(s.settings.activities.filter((a) => a.key === 'chines').length, 1);
+  const p = phraseOfDay('chines', E.todayKey(s));
+  assert.ok(p.words.length && p.words.every(([hz, py]) => hz && py));
+  assert.equal(p.text, p.words.map((w) => w[0]).join(''));
+  E.toggleLanguage(s, 'chines', false);
+  assert.deepEqual(s.profile.languages, []);
+  assert.deepEqual(migrate(fresh()).profile.languages, []);
 });
 
-test('leitura fácil vem ligada e pode ser desligada', () => {
+test('leitura fácil vem desligada e cada pessoa liga a sua', () => {
   const s = fresh();
-  assert.equal(s.profile.easyRead, true);
+  assert.equal(s.profile.easyRead, false);
   const old = fresh();
   delete old.profile.easyRead;
-  assert.equal(migrate(old).profile.easyRead, true);
-  E.updateProfile(s, { easyRead: false });
-  assert.equal(migrate(s).profile.easyRead, false);
+  assert.equal(migrate(old).profile.easyRead, false);
+  E.updateProfile(s, { easyRead: true });
+  assert.equal(migrate(s).profile.easyRead, true);
 });

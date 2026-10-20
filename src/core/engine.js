@@ -12,9 +12,7 @@ import {
 import { computeStreak, effortDays, inactiveGapBefore } from './streaks.js';
 import { ACHIEVEMENTS, RARITY } from './achievements.js';
 import { RANKS, areaRanks, dungeonDef, dungeonStatus, hunterRank } from './dungeons.js';
-import { LANGUAGES, practiceInfo } from './languages.js';
-
-const LANGUAGE_KEYS = LANGUAGES.map((l) => l.key);
+import { LANGUAGE_KEYS, languageInfo, practiceInfo } from './languages.js';
 
 export { RuleError };
 
@@ -83,6 +81,8 @@ export function computeStats(state, d = derive(state)) {
   s.activityDays = Object.fromEntries(Object.entries(activityDaySets).map(([k, v]) => [k, v.size]));
   s.restDays = restDays.size;
   s.languageDays = languageDays.size;
+  // dias do segundo idioma mais praticado (para "Duas Vozes")
+  s.languageDaysSecond = LANGUAGE_KEYS.map((k) => s.activityDays[k] || 0).sort((a, b) => b - a)[1] || 0;
   const ar = Object.values(areaRanks(state));
   s.dungeonsCleared = Object.values(state.dungeons || {}).filter((r) => r.clearedAt).length;
   s.maxAreaRank = Math.max(-1, ...ar);
@@ -411,6 +411,7 @@ export function logActivity(state, activityKey, opts = {}, today = todayKey(stat
 /** Registra uma micro-prática de idioma. Usa as mesmas regras de qualquer atividade (limite diário, intervalo). */
 export function logLanguage(state, lang, practiceId, opts = {}, today = todayKey(state)) {
   if (!LANGUAGE_KEYS.includes(lang)) throw new RuleError('Idioma não encontrado.');
+  if (!state.profile.languages?.includes(lang)) throw new RuleError('Ative este idioma na tela Idiomas primeiro.');
   const practice = practiceInfo(practiceId);
   if (!practice) throw new RuleError('Prática não encontrada.');
   if (!state.settings.activities.some((a) => a.key === lang)) {
@@ -419,6 +420,17 @@ export function logLanguage(state, lang, practiceId, opts = {}, today = todayKey
   const entry = logActivity(state, lang, { ...opts, note: opts.note || practice.label }, today);
   entry.practice = practice.id;
   return entry;
+}
+
+/** Liga ou desliga um idioma só para esta pessoa. Ao ligar, a atividade do idioma é criada se não existir. */
+export function toggleLanguage(state, lang, on) {
+  const info = languageInfo(lang);
+  if (!info) throw new RuleError('Idioma não encontrado.');
+  const list = new Set(state.profile.languages || []);
+  if (on) list.add(lang); else list.delete(lang);
+  state.profile.languages = LANGUAGE_KEYS.filter((k) => list.has(k));
+  if (on && !state.settings.activities.some((a) => a.key === lang)) state.settings.activities.push(structuredClone(info.activity));
+  return state.profile.languages;
 }
 
 /** Remove uma entrada de esforço do histórico (correção de erro). */

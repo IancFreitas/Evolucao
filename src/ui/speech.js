@@ -1,7 +1,7 @@
 // Leitura em voz alta pelo próprio aparelho (Web Speech API): funciona offline e sem servidor.
 // Enquanto fala, destaca a palavra atual, o que ajuda quem tem dislexia a ligar som e escrita.
 
-const VOICE_LANG = { ingles: 'en-US', espanhol: 'es-ES', pt: 'pt-BR' };
+const VOICE_LANG = { ingles: 'en-US', espanhol: 'es-ES', chines: 'zh-CN', pt: 'pt-BR' };
 
 export const canSpeak = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
 

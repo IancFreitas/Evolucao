@@ -36,8 +36,6 @@ export const DEFAULT_ACTIVITIES = [
   { key: 'sono', name: 'Meta de sono cumprida', icon: '🌙', xp: 20, attrs: { VIT: 3, DISC: 1 }, dailyLimit: 1 },
   { key: 'descanso', name: 'Descanso planejado', icon: '🛌', xp: 15, attrs: { VIT: 2, WIS: 1 }, dailyLimit: 1 },
   { key: 'passos', name: 'Meta de passos', icon: '🚶', xp: 15, attrs: { END: 2, VIT: 1 }, dailyLimit: 1 },
-  { key: 'ingles', name: 'Prática de inglês', icon: '🇺🇸', xp: 20, attrs: { INT: 2, CHA: 1 }, dailyLimit: 2 },
-  { key: 'espanhol', name: 'Prática de espanhol', icon: '🇪🇸', xp: 20, attrs: { INT: 2, CHA: 1 }, dailyLimit: 2 },
 ];
 
 export const DEFAULT_RULES = {
@@ -129,7 +127,7 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
   return {
     version: SCHEMA_VERSION,
     createdAt: Date.now(),
-    profile: { name, activeTitle: null, theme: 'azul', onboarded: true, easyRead: true },
+    profile: { name, activeTitle: null, theme: 'azul', onboarded: true, easyRead: false, languages: [] },
     settings: {
       rules: structuredClone(DEFAULT_RULES),
       activities: structuredClone(DEFAULT_ACTIVITIES),
