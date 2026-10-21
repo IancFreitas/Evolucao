@@ -33,7 +33,7 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Classes | Nascem dos atributos mais desenvolvidos e mudam com eles: 7 classes puras (ex.: Arcanista), 21 híbridas (ex.: Sábio = INT+WIS) e a rara Harmonista (tudo equilibrado). O nível define o grau (Iniciante → Ascendente) e os benefícios |
 | Idiomas | **Opcional, por pessoa**: nada aparece até você escolher seus idiomas (Ajustes → Perfil). Inglês, espanhol e chinês (mandarim, com pinyin grande e caracteres em cima). Frase do dia com áudio (normal e devagar) e destaque da palavra falada, tradução só quando pedir, micro-práticas de 2–10 min focadas em ouvir e falar (várias feitas enquanto arruma a casa), sem missão, prazo ou sequência. Cada prática vale XP, INT e CHA, até 2 por idioma por dia |
 | Acessibilidade | **Leitura fácil (dislexia)**, opcional (Ajustes → Perfil): letras maiores e mais espaçadas, sem maiúsculas corridas nem fonte monoespaçada, linhas mais curtas |
-| Conquistas | 36 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
+| Conquistas | 41 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |
 | Análise | XP diário/semanal/mensal, radar e evolução dos atributos, hábitos por dia, mapa de consistência, missões principais, histórico de níveis, áreas de dedicação e de atenção, recordes |
 | Recuperação | Estados do dia (normal, difícil, descanso planejado, doente, imprevisto), dias protegidos, escudos semanais, bônus de retomada, conquista "Fênix", recordes nunca perdidos |

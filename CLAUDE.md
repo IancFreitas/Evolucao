@@ -19,7 +19,7 @@ PWA de RPG de evolução pessoal: hábitos viram XP, níveis, atributos, classes
 - R5 Mudança de regra vale só daqui pra frente (a entrada guarda o XP do momento).
 - R6 O que vem de fora só gera progresso após confirmação na fila.
 - R7 Tela nova: `src/ui/views/<nome>.js` + `VIEWS` em `src/ui/app.js` + `SHELL` do `sw.js`.
-- R8 Regra/atributo novo: `defaults.js` + migração em `migrations.js` + `SCHEMA_VERSION`.
+- R8 Regra/atributo novo: `defaults.js` + migração aditiva (`fill`) em `migrations.js`. `SCHEMA_VERSION` só sobe em mudança incompatível de forma (renomear/mover/converter), com migração ramificada por versão e teste com backup antigo.
 - R9 Integração nova: itens `{source, externalId, date, title, activity}` e `engine.addPending`.
 - R10 Privacidade: nada sai do aparelho (sem servidor, CDN, rastreador ou fetch externo), salvo backup exportado.
 - R11 Saúde: a parte do link após `#` nunca vai ao servidor; só os últimos 30 dias.
@@ -29,11 +29,11 @@ PWA de RPG de evolução pessoal: hábitos viram XP, níveis, atributos, classes
 ## Checklist de feature
 1. Regra em `src/core/` (pura) e teste em `tests/core.test.mjs`.
 2. Tela nova: view + `VIEWS` + `SHELL` (R7). Arquivo novo carregado pelo app também entra no `SHELL`.
-3. Estado novo: defaults + migração + `SCHEMA_VERSION` (R8).
-4. Incrementar `VERSION` do `sw.js` ao mudar a lista `SHELL` (a troca limpa o cache antigo; com rede primeiro, editar um arquivo já listado chega online sem bump). Hoje `sa-v9`.
+3. Estado novo: defaults + migração aditiva (R8); `SCHEMA_VERSION` só se a forma mudar de modo incompatível.
+4. Incrementar `VERSION` do `sw.js` ao mudar a lista `SHELL` (a troca limpa o cache antigo; com rede primeiro, editar um arquivo já listado chega online sem bump). Hoje `sa-v10`.
 5. Atualizar o `README.md` (tabelas de conquistas e XP) e rodar `npm test`.
 
-**Atenção:** o workflow `.github/workflows/pages.yml` publica no GitHub Pages a cada push em `claude/system-ascension-rpg-ml5zrf` e `main` (roda `npm test` antes). Push = publicação pública.
+**Atenção:** o workflow `.github/workflows/pages.yml` publica no GitHub Pages a cada push em `claude/system-ascension-rpg-ml5zrf` (roda `npm test` antes). Push = publicação pública.
 
 ## Equipe de agentes (obrigatório)
 
@@ -91,8 +91,6 @@ Pode pular: Júnior em mudanças de uma ou duas linhas; Pleno quando o Sênior j
 
 Pontos de aprovação do dono: escopo de feature nova, balanceamento de XP/recompensas, mudança de `SCHEMA_VERSION`, qualquer push (publica no Pages) e qualquer coisa que altere a promessa de privacidade.
 
-### Pendências conhecidas (verificadas, ainda não corrigidas)
-- `README.md:36` diz 36 conquistas; `ACHIEVEMENTS` em `src/core/achievements.js` tem 41.
-- `SCHEMA_VERSION` está em 1 (`defaults.js:4`) e `migrations.js:54` só regrava a versão; nenhuma migração incrementou.
-- `assets/icon-maskable-512.png` está no `manifest.webmanifest` mas não no `SHELL` do `sw.js`.
-- `pages.yml` dispara também em `main`, mas só existe a branch `claude/system-ascension-rpg-ml5zrf`.
+### Pendências conhecidas
+- Resolvidas: contagem de conquistas no README (41), ícone maskable no `SHELL` (`sa-v10`), gatilho inexistente `main` removido do `pages.yml` e documentação de `SCHEMA_VERSION` alinhada ao código (migração aditiva `fill`; versão sobe só em mudança incompatível de forma; segue em 1 porque não houve mudança incompatível até hoje).
+- Atenção futura: `migrate()` sempre regrava `s.version` (`migrations.js:54`), então backup de versão maior é aceito e rebaixado. Hoje não tem efeito; se `SCHEMA_VERSION` subir, rejeitar backups de versão maior.

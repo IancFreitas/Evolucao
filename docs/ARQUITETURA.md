@@ -42,5 +42,9 @@ Se a regra recusar a ação (`RuleError`), o rascunho é descartado e o usuário
 
 - Nova tela: criar `src/ui/views/<nome>.js` exportando `{ id, title, icon, render, actions, forms, changes }`
   e registrá-la em `VIEWS` (`app.js`) e no `SHELL` do `sw.js`.
-- Nova regra/atributo: `defaults.js` + migração em `storage/migrations.js` (incrementar `SCHEMA_VERSION`).
+- Nova regra/atributo: `defaults.js` + migração em `storage/migrations.js`. A migração é aditiva (`fill`): completa campos
+  ausentes e funciona sem consultar a versão, então um campo novo com valor padrão **não** exige incrementar
+  `SCHEMA_VERSION`. Incremente só em mudança incompatível de forma (renomear, mover ou converter dados existentes),
+  e então a migração deve ramificar por `s.version` e ter teste com backup antigo. Hoje nada lê `version` para decidir
+  a migração; `migrate` apenas a regrava.
 - Nova integração: produzir itens `{ source, externalId, date, title, activity }` e chamar `engine.addPending`.
