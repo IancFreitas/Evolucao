@@ -1,10 +1,10 @@
 // Service worker: funcionamento offline, lembretes periódicos e clique em notificações.
-const VERSION = 'sa-v6';
+const VERSION = 'sa-v9';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png',
   'src/main.js', 'src/ui/app.js', 'src/ui/dom.js', 'src/ui/charts.js',
-  'src/ui/views/status.js', 'src/ui/views/missions.js', 'src/ui/views/dungeons.js', 'src/core/dungeons.js', 'src/ui/views/log.js', 'src/ui/views/analytics.js',
+  'src/ui/views/status.js', 'src/ui/views/missions.js', 'src/ui/views/dungeons.js', 'src/core/dungeons.js', 'src/ui/views/log.js', 'src/ui/views/languages.js', 'src/ui/speech.js', 'src/core/languages.js', 'src/ui/views/analytics.js',
   'src/ui/views/achievements.js', 'src/ui/views/shop.js', 'src/ui/views/history.js', 'src/ui/views/settings.js',
   'src/core/dates.js', 'src/core/defaults.js', 'src/core/levels.js', 'src/core/ledger.js', 'src/core/missions.js',
   'src/core/streaks.js', 'src/core/achievements.js', 'src/core/analytics.js', 'src/core/engine.js',

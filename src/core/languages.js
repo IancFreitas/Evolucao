@@ -1,0 +1,164 @@
+// Idiomas sem cobrança: frase do dia e micro-práticas de poucos minutos.
+// Nada aqui cria missões, prazos ou sequências: só registra a atividade do idioma quando você pratica.
+import { diffDays } from './dates.js';
+
+// Idiomas disponíveis. Nenhum vem ligado: cada pessoa escolhe os seus (Ajustes ou tela Idiomas),
+// e só então a atividade correspondente aparece. Quem não escolher não vê nada disso.
+const activity = (key, name, icon) => ({ key, name, icon, xp: 20, attrs: { INT: 2, CHA: 1 }, dailyLimit: 2 });
+export const LANGUAGES = [
+  { key: 'ingles', name: 'Inglês', flag: '🇺🇸', voice: 'en-US', activity: activity('ingles', 'Prática de inglês', '🇺🇸') },
+  { key: 'espanhol', name: 'Espanhol', flag: '🇪🇸', voice: 'es-ES', activity: activity('espanhol', 'Prática de espanhol', '🇪🇸') },
+  { key: 'chines', name: 'Chinês', flag: '🇨🇳', voice: 'zh-CN', activity: activity('chines', 'Prática de chinês (mandarim)', '🇨🇳') },
+];
+export const LANGUAGE_KEYS = LANGUAGES.map((l) => l.key);
+export const languageInfo = (key) => LANGUAGES.find((l) => l.key === key);
+
+// Frases curtas do dia a dia, várias ligadas à casa e à rotina: dá para usar enquanto arruma tudo.
+const PHRASES = {
+  ingles: [
+    ['I\'m tidying up the living room.', 'Estou arrumando a sala.'],
+    ['Where did I put the keys?', 'Onde eu coloquei as chaves?'],
+    ['This box goes to the bedroom.', 'Esta caixa vai para o quarto.'],
+    ['I need to do the laundry today.', 'Preciso lavar a roupa hoje.'],
+    ['Let\'s get rid of what we don\'t use.', 'Vamos nos livrar do que não usamos.'],
+    ['The kitchen looks much better now.', 'A cozinha está muito melhor agora.'],
+    ['Could you give me a hand?', 'Você pode me dar uma mão?'],
+    ['I\'ll take care of it tomorrow.', 'Eu cuido disso amanhã.'],
+    ['One step at a time.', 'Um passo de cada vez.'],
+    ['I\'m running out of space.', 'Estou ficando sem espaço.'],
+    ['It took longer than I expected.', 'Demorou mais do que eu esperava.'],
+    ['I\'m proud of what I did today.', 'Tenho orgulho do que fiz hoje.'],
+    ['Let me think about it.', 'Deixa eu pensar sobre isso.'],
+    ['I\'m looking forward to the weekend.', 'Estou ansioso pelo fim de semana.'],
+    ['What are you up to?', 'O que você está fazendo / aprontando?'],
+    ['I\'ve been really busy lately.', 'Tenho andado muito ocupado ultimamente.'],
+    ['That makes sense.', 'Isso faz sentido.'],
+    ['I\'ll figure it out.', 'Eu vou dar um jeito.'],
+    ['Let\'s keep it simple.', 'Vamos manter simples.'],
+    ['I hung the picture on the wall.', 'Pendurei o quadro na parede.'],
+    ['The drawer is stuck.', 'A gaveta está emperrada.'],
+    ['I\'m taking a short break.', 'Estou fazendo uma pausa curta.'],
+    ['Could you say that again, please?', 'Você pode repetir, por favor?'],
+    ['How do you say this in English?', 'Como se diz isso em inglês?'],
+    ['I\'m getting the hang of it.', 'Estou pegando o jeito.'],
+    ['It\'s not perfect, but it\'s done.', 'Não está perfeito, mas está feito.'],
+    ['I\'m going to vacuum the floor.', 'Vou passar o aspirador no chão.'],
+    ['Everything has its place now.', 'Agora tudo tem o seu lugar.'],
+    ['I feel more at home here.', 'Me sinto mais em casa aqui.'],
+    ['Small progress is still progress.', 'Progresso pequeno ainda é progresso.'],
+  ],
+  espanhol: [
+    ['Hola, ¿qué tal?', 'Oi, tudo bem?'],
+    ['Estoy ordenando la casa.', 'Estou arrumando a casa.'],
+    ['¿Dónde está la escoba?', 'Onde está a vassoura?'],
+    ['Necesito lavar los platos.', 'Preciso lavar a louça.'],
+    ['La cocina está limpia.', 'A cozinha está limpa.'],
+    ['Voy a tender la ropa.', 'Vou estender a roupa.'],
+    ['¿Me ayudas, por favor?', 'Você me ajuda, por favor?'],
+    ['Poco a poco.', 'Pouco a pouco.'],
+    ['Hoy estoy cansado, pero contento.', 'Hoje estou cansado, mas contente.'],
+    ['Esta caja va al dormitorio.', 'Esta caixa vai para o quarto.'],
+    ['Me gusta cómo quedó.', 'Gosto de como ficou.'],
+    ['¿Cómo se dice esto en español?', 'Como se diz isso em espanhol?'],
+    ['No entiendo, ¿puedes repetir?', 'Não entendo, pode repetir?'],
+    ['Tengo que hacer la compra.', 'Tenho que fazer as compras do mercado.'],
+    ['La ventana está abierta.', 'A janela está aberta.'],
+    ['Apaga la luz, por favor.', 'Apague a luz, por favor.'],
+    ['Ya casi termino.', 'Já estou quase terminando.'],
+    ['¡Qué bien!', 'Que bom!'],
+    ['Mañana sigo.', 'Amanhã eu continuo.'],
+    ['Me llamo… y vivo en Brasil.', 'Eu me chamo… e moro no Brasil.'],
+    ['Quiero aprender español.', 'Quero aprender espanhol.'],
+    ['El sofá es muy cómodo.', 'O sofá é muito confortável.'],
+    ['Voy a barrer el suelo.', 'Vou varrer o chão.'],
+    ['Hace calor hoy.', 'Está calor hoje.'],
+    ['Tengo hambre.', 'Estou com fome.'],
+    ['¿Qué hora es?', 'Que horas são?'],
+    ['Estoy aprendiendo, ten paciencia.', 'Estou aprendendo, tenha paciência.'],
+    ['Todo tiene su lugar.', 'Tudo tem o seu lugar.'],
+    ['¡Buen trabajo!', 'Bom trabalho!'],
+    ['Nos vemos luego.', 'A gente se vê depois.'],
+  ],
+};
+
+// Mandarim: cada palavra é [caracteres, pinyin]. A tela mostra o pinyin grande (letras do nosso alfabeto,
+// com o tom no acento) e os caracteres pequenos em cima; o áudio lê os caracteres.
+const ZH = [
+  [[['你好！', 'nǐ hǎo!']], 'Olá!'],
+  [[['谢谢！', 'xièxie!']], 'Obrigado!'],
+  [[['不', 'bú'], ['客气。', 'kèqi.']], 'De nada.'],
+  [[['对不起。', 'duìbuqǐ.']], 'Desculpa.'],
+  [[['没', 'méi'], ['关系。', 'guānxi.']], 'Não tem problema.'],
+  [[['早上', 'zǎoshang'], ['好！', 'hǎo!']], 'Bom dia!'],
+  [[['晚安。', 'wǎn\'ān.']], 'Boa noite.'],
+  [[['你', 'nǐ'], ['好吗？', 'hǎo ma?']], 'Tudo bem com você?'],
+  [[['我', 'wǒ'], ['很', 'hěn'], ['好。', 'hǎo.']], 'Eu estou bem.'],
+  [[['我', 'wǒ'], ['很', 'hěn'], ['累。', 'lèi.']], 'Estou muito cansado.'],
+  [[['我', 'wǒ'], ['饿了。', 'è le.']], 'Estou com fome.'],
+  [[['我', 'wǒ'], ['在', 'zài'], ['学', 'xué'], ['中文。', 'zhōngwén.']], 'Estou aprendendo chinês.'],
+  [[['我', 'wǒ'], ['在', 'zài'], ['打扫', 'dǎsǎo'], ['房间。', 'fángjiān.']], 'Estou limpando o quarto.'],
+  [[['我', 'wǒ'], ['洗', 'xǐ'], ['碗。', 'wǎn.']], 'Eu lavo a louça.'],
+  [[['家', 'jiā'], ['很', 'hěn'], ['干净。', 'gānjìng.']], 'A casa está limpa.'],
+  [[['这个', 'zhège'], ['放', 'fàng'], ['哪儿？', 'nǎr?']], 'Onde eu coloco isto?'],
+  [[['开', 'kāi'], ['灯。', 'dēng.']], 'Acende a luz.'],
+  [[['关', 'guān'], ['门。', 'mén.']], 'Fecha a porta.'],
+  [[['喝', 'hē'], ['水。', 'shuǐ.']], 'Beber água.'],
+  [[['几', 'jǐ'], ['点了？', 'diǎn le?']], 'Que horas são?'],
+  [[['我', 'wǒ'], ['喜欢', 'xǐhuan'], ['音乐。', 'yīnyuè.']], 'Eu gosto de música.'],
+  [[['请', 'qǐng'], ['再', 'zài'], ['说', 'shuō'], ['一遍。', 'yí biàn.']], 'Por favor, fale de novo.'],
+  [[['我', 'wǒ'], ['听', 'tīng'], ['不', 'bù'], ['懂。', 'dǒng.']], 'Não entendo (o que ouvi).'],
+  [[['慢慢', 'mànmàn'], ['来。', 'lái.']], 'Com calma, devagar.'],
+  [[['一', 'yí'], ['步', 'bù'], ['一', 'yí'], ['步。', 'bù.']], 'Um passo de cada vez.'],
+  [[['加油！', 'jiāyóu!']], 'Força! Você consegue!'],
+  [[['太', 'tài'], ['好了！', 'hǎo le!']], 'Que ótimo!'],
+  [[['做得', 'zuò de'], ['好！', 'hǎo!']], 'Bem feito!'],
+  [[['明天', 'míngtiān'], ['见。', 'jiàn.']], 'Até amanhã.'],
+  [[['再见！', 'zàijiàn!']], 'Tchau!'],
+];
+PHRASES.chines = ZH.map(([words, translation]) => [words.map((w) => w[0]).join(''), translation, words]);
+
+/**
+ * Micro-práticas de 2 a 10 minutos, com nomes curtos (pensadas para dislexia: falar e ouvir, quase nada
+ * de escrita). As marcadas com `home` combinam com arrumar a casa: não precisa separar um tempo extra.
+ */
+export const PRACTICES = [
+  { id: 'frase', icon: '🗣️', label: 'Repeti a frase', minutes: 2 },
+  { id: 'narrar', icon: '🧹', label: 'Narrei a arrumação', minutes: 5, home: true },
+  { id: 'ouvir', icon: '🎧', label: 'Ouvi arrumando', minutes: 10, home: true },
+  { id: 'rotular', icon: '🏷️', label: 'Nomeei 5 objetos', minutes: 2, home: true },
+  { id: 'app', icon: '📱', label: 'Lição no app', minutes: 5 },
+  { id: 'falar', icon: '💬', label: 'Contei meu dia', minutes: 3 },
+  { id: 'assistir', icon: '🎬', label: 'Vi um vídeo', minutes: 10 },
+];
+
+export const practiceInfo = (id) => PRACTICES.find((p) => p.id === id);
+
+export function phrases(lang) {
+  return PHRASES[lang] || [];
+}
+
+/** Frase do dia: muda a cada dia e é igual em qualquer aparelho. Cada idioma anda num passo diferente. */
+export function phraseOfDay(lang, date) {
+  const list = phrases(lang);
+  if (!list.length) return null;
+  const offset = { espanhol: 7, chines: 13 }[lang] || 0;
+  const n = diffDays('2026-01-01', date) + offset;
+  const [text, translation, words] = list[((n % list.length) + list.length) % list.length];
+  return { text, translation, words: words || null };
+}
+
+/** Idiomas que esta pessoa escolheu (vazio = a tela Idiomas nem aparece no menu). */
+export const enabledLanguages = (state) => LANGUAGES.filter((l) => state.profile.languages?.includes(l.key));
+
+/** Resumo gentil: só conta o que você fez, nunca o que faltou. */
+export function languageSummary(state, lang, today, windowDays = 30) {
+  const entries = state.log.filter((e) => e.activity === lang && (e.kind === 'activity' || e.kind === 'mission'));
+  const recent = entries.filter((e) => diffDays(e.date, today) < windowDays && e.date <= today);
+  const days = new Set(entries.map((e) => e.date));
+  return {
+    today: entries.filter((e) => e.date === today).length,
+    recentDays: new Set(recent.map((e) => e.date)).size,
+    totalDays: days.size,
+    minutes: entries.reduce((sum, e) => sum + (practiceInfo(e.practice)?.minutes || 0), 0),
+  };
+}

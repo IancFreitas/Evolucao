@@ -17,13 +17,14 @@ import statusView from './views/status.js';
 import missionsView from './views/missions.js';
 import dungeonsView from './views/dungeons.js';
 import logView from './views/log.js';
+import languagesView from './views/languages.js';
 import analyticsView from './views/analytics.js';
 import achievementsView from './views/achievements.js';
 import shopView from './views/shop.js';
 import historyView from './views/history.js';
 import settingsView from './views/settings.js';
 
-const VIEWS = [statusView, missionsView, dungeonsView, logView, analyticsView, achievementsView, shopView, historyView, settingsView];
+const VIEWS = [statusView, missionsView, dungeonsView, logView, languagesView, analyticsView, achievementsView, shopView, historyView, settingsView];
 const MOBILE_NAV = ['status', 'missions', 'dungeons', 'log'];
 
 /* ------------------------------ Store ------------------------------ */
@@ -148,7 +149,7 @@ function showLevelUp(level, cls) {
 const root = () => document.getElementById('app');
 
 function navItems(c) {
-  return VIEWS.map((v) => {
+  return VIEWS.filter((v) => !v.hidden?.(c)).map((v) => {
     const badge = v.badge?.(c);
     return `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}<span>${v.title}</span>${badge ? `<span class="count">${badge}</span>` : ''}</button>`;
   }).join('');
@@ -158,6 +159,7 @@ function applyTheme(state) {
   const t = THEMES[state.profile.theme] || THEMES.azul;
   document.documentElement.style.setProperty('--accent', t.accent);
   document.documentElement.style.setProperty('--accent2', t.accent2);
+  document.documentElement.classList.toggle('easy-read', !!state.profile.easyRead);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', '#04050c');
 }
 
@@ -185,7 +187,7 @@ export function render() {
       ${MOBILE_NAV.map((id) => { const v = VIEWS.find((x) => x.id === id); return `<button class="${ui.view === id ? 'active' : ''}" data-nav="${id}">${icon(v.icon)}${v.short || v.title}</button>`; }).join('')}
       <button class="${!MOBILE_NAV.includes(ui.view) ? 'active' : ''}" data-action="more">${icon('more')}Mais</button>
     </nav>
-    ${ui.moreOpen ? `<div class="more-sheet">${VIEWS.filter((v) => !MOBILE_NAV.includes(v.id)).map((v) => `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}${v.title}</button>`).join('')}</div>` : ''}
+    ${ui.moreOpen ? `<div class="more-sheet">${VIEWS.filter((v) => !MOBILE_NAV.includes(v.id) && !v.hidden?.(c)).map((v) => `<button class="nav-item ${ui.view === v.id ? 'active' : ''}" data-nav="${v.id}">${icon(v.icon)}${v.title}</button>`).join('')}</div>` : ''}
   </div>`;
   view.mounted?.(c);
 }

@@ -24,14 +24,16 @@ Os dados ficam salvos no dispositivo (IndexedDB) e continuam lá após fechar a 
 | Área | Funcionalidades |
 | --- | --- |
 | Personagem | Nome, classe, título ativo, nível, barra de XP, moedas, sequência, escudos |
-| Personalização | Entrevista "Despertar" ao entrar: história de vida, rotina, prioridades e focos por área, metas, limitações e recompensas viram missões, atividades, Boss e loja sob medida. Opção de ser entrevistado pelo Claude e colar o perfil |
+| Personalização | Entrevista "Despertar" ao entrar: história de vida (dá para ditar pelo microfone), rotina, prioridades e focos por área, metas, ritmo (**leve, sem cobrança** ou normal), idiomas, leitura fácil, limitações e recompensas viram missões, atividades, Boss e loja sob medida. Opção de pedir ao Claude um perfil feito a partir do que ele já sabe de você (memória e conversas anteriores), perguntando só o que faltar, e colar no app |
 | Atributos | STR, END, INT, WIS, DISC, CHA, VIT, que evoluem **apenas** por ações registradas |
 | XP | Valores configuráveis por atividade e por tipo de missão, curva progressiva editável, bônus diário |
 | Anti-exploração | Conclusão única por período, retornos decrescentes, limite diário, intervalo mínimo, sem registros futuros, retroativos limitados, chaves únicas no livro-razão |
 | Missões | Diárias (dias da semana, essenciais, versão leve), semanais, principais (progresso + marcos 25/50/75%), especiais, Boss Battles (etapas e HP). Criar, editar, adiar, pausar, concluir, desfazer, excluir |
 | Dungeons | 42 dungeons (7 áreas × ranks E→S) com requisitos medidos pelos registros, chefe final com prazo, portão fechado por 48h (configurável) após derrota sem perder os requisitos, rank por área e rank geral (4 áreas no mesmo rank) |
 | Classes | Nascem dos atributos mais desenvolvidos e mudam com eles: 7 classes puras (ex.: Arcanista), 21 híbridas (ex.: Sábio = INT+WIS) e a rara Harmonista (tudo equilibrado). O nível define o grau (Iniciante → Ascendente) e os benefícios |
-| Conquistas | 33 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
+| Idiomas | **Opcional, por pessoa**: nada aparece até você escolher seus idiomas (Ajustes → Perfil). Inglês, espanhol e chinês (mandarim, com pinyin grande e caracteres em cima). Frase do dia com áudio (normal e devagar) e destaque da palavra falada, tradução só quando pedir, micro-práticas de 2–10 min focadas em ouvir e falar (várias feitas enquanto arruma a casa), sem missão, prazo ou sequência. Cada prática vale XP, INT e CHA, até 2 por idioma por dia |
+| Acessibilidade | **Leitura fácil (dislexia)**, opcional (Ajustes → Perfil): letras maiores e mais espaçadas, sem maiúsculas corridas nem fonte monoespaçada, linhas mais curtas |
+| Conquistas | 36 conquistas (comum, rara, épica, lendária), títulos especiais (ex.: 30 dias de estudo = "Arquiteto do Conhecimento"), permanentes |
 | Loja e inventário | Recompensas pessoais com custo, limite semanal e intervalo; inventário com usar/devolver |
 | Análise | XP diário/semanal/mensal, radar e evolução dos atributos, hábitos por dia, mapa de consistência, missões principais, histórico de níveis, áreas de dedicação e de atenção, recordes |
 | Recuperação | Estados do dia (normal, difícil, descanso planejado, doente, imprevisto), dias protegidos, escudos semanais, bônus de retomada, conquista "Fênix", recordes nunca perdidos |

@@ -346,3 +346,78 @@ test('rank geral exige 4 áreas no rank', () => {
   s.dungeons['VIT-E'] = { clearedAt: now };
   assert.equal(hunterRank(s), 0);
 });
+
+test('idiomas: prática registra XP sem criar missões e respeita o limite diário', async () => {
+  const { phraseOfDay, languageSummary } = await import('../src/core/languages.js');
+  const s = fresh();
+  const today = E.todayKey(s);
+  const missions = s.missions.length;
+  assert.throws(() => E.logLanguage(s, 'espanhol', 'ouvir'), E.RuleError);
+  E.toggleLanguage(s, 'espanhol', true);
+  const { result } = E.act(s, (st) => E.logLanguage(st, 'espanhol', 'ouvir'));
+  assert.equal(result.activity, 'espanhol');
+  assert.equal(result.practice, 'ouvir');
+  assert.ok(result.xp > 0 && result.attrs.INT > 0 && result.attrs.CHA > 0);
+  assert.equal(s.missions.length, missions);
+  assert.ok(s.achievements['idioma-1']);
+  advance(30);
+  E.logLanguage(s, 'espanhol', 'frase');
+  advance(30);
+  assert.throws(() => E.logLanguage(s, 'espanhol', 'app'), E.RuleError);
+  assert.throws(() => E.logLanguage(s, 'frances', 'app'), E.RuleError);
+  const sum = languageSummary(s, 'espanhol', today);
+  assert.equal(sum.today, 2);
+  assert.equal(sum.recentDays, 1);
+  assert.equal(sum.minutes, 12);
+  assert.notDeepEqual(phraseOfDay('ingles', today), phraseOfDay('ingles', addDays(today, 1)));
+});
+
+test('idiomas só aparecem para quem escolhe, e o chinês tem pinyin', async () => {
+  const { enabledLanguages, phraseOfDay } = await import('../src/core/languages.js');
+  const s = fresh();
+  assert.equal(enabledLanguages(s).length, 0);
+  assert.ok(!s.settings.activities.some((a) => ['ingles', 'espanhol', 'chines'].includes(a.key)));
+  E.toggleLanguage(s, 'chines', true);
+  E.toggleLanguage(s, 'chines', true);
+  assert.deepEqual(s.profile.languages, ['chines']);
+  assert.equal(s.settings.activities.filter((a) => a.key === 'chines').length, 1);
+  const p = phraseOfDay('chines', E.todayKey(s));
+  assert.ok(p.words.length && p.words.every(([hz, py]) => hz && py));
+  assert.equal(p.text, p.words.map((w) => w[0]).join(''));
+  E.toggleLanguage(s, 'chines', false);
+  assert.deepEqual(s.profile.languages, []);
+  assert.deepEqual(migrate(fresh()).profile.languages, []);
+});
+
+test('leitura fácil vem desligada e cada pessoa liga a sua', () => {
+  const s = fresh();
+  assert.equal(s.profile.easyRead, false);
+  const old = fresh();
+  delete old.profile.easyRead;
+  assert.equal(migrate(old).profile.easyRead, false);
+  E.updateProfile(s, { easyRead: true });
+  assert.equal(migrate(s).profile.easyRead, true);
+});
+
+test('personalização entende fase leve, casa, idiomas e leitura fácil', () => {
+  const story = 'Estou arrumando a casa e tenho feito muita coisa. Tenho dislexia. Quero treinar inglês e aprender espanhol e chinês, sem muita cobrança.';
+  const h = storyHints(story);
+  assert.ok(h.home && h.dyslexia && h.light);
+  assert.deepEqual(h.languages, ['ingles', 'espanhol', 'chines']);
+  const base = { name: 'Ian', story, dailyMinutes: 180, goals: [{ title: 'Organizar a casa', area: 'DISC', months: 1 }],
+    priorities: { STR: 'alta', END: 'alta', INT: 'alta', WIS: 'alta', DISC: 'alta', CHA: 'alta', VIT: 'alta' } };
+  const leve = buildPlan({ ...base, pace: 'leve', languages: ['ingles', 'chines', 'klingon'], easyRead: true }, '2026-10-14');
+  const normal = buildPlan(base, '2026-10-14');
+  const essentials = (p) => p.missions.filter((m) => m.type === 'daily' && m.essential).length;
+  assert.ok(essentials(leve) <= 2 && essentials(normal) > 2);
+  assert.ok(leve.missions.filter((m) => m.type === 'weekly').length < normal.missions.filter((m) => m.type === 'weekly').length);
+  assert.ok(leve.missions.some((m) => m.activity === 'domestica' && !m.essential));
+  assert.deepEqual(leve.languages, ['ingles', 'chines']);
+  const s = fresh();
+  E.applyPersonalization(s, leve);
+  assert.deepEqual(s.profile.languages, ['ingles', 'chines']);
+  assert.equal(s.profile.easyRead, true);
+  assert.ok(s.settings.activities.some((a) => a.key === 'chines'));
+  E.applyPersonalization(s, normal, { replace: true });
+  assert.deepEqual(s.profile.languages, []);
+});

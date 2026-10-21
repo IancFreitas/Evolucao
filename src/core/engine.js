@@ -12,6 +12,7 @@ import {
 import { computeStreak, effortDays, inactiveGapBefore } from './streaks.js';
 import { ACHIEVEMENTS, RARITY } from './achievements.js';
 import { RANKS, areaRanks, dungeonDef, dungeonStatus, hunterRank } from './dungeons.js';
+import { LANGUAGE_KEYS, languageInfo, practiceInfo } from './languages.js';
 
 export { RuleError };
 
@@ -49,6 +50,7 @@ export function computeStats(state, d = derive(state)) {
   const attrDaySets = Object.fromEntries(ATTR_KEYS.map((k) => [k, new Set()]));
   const activityDaySets = {};
   const restDays = new Set();
+  const languageDays = new Set();
   const s = {
     totalXp: d.totalXp, level: d.level.level, bestStreak: d.streak.best,
     effortEntries: 0, perfectDays: 0, bossesDefeated: 0, mainCompleted: 0, weeklyCompleted: 0,
@@ -62,6 +64,7 @@ export function computeStats(state, d = derive(state)) {
       for (const [k, v] of Object.entries(e.attrs || {})) if (v > 0 && attrDaySets[k]) attrDaySets[k].add(e.date);
       if (e.activity) (activityDaySets[e.activity] ||= new Set()).add(e.date);
       if (e.activity === 'descanso') restDays.add(e.date);
+      if (LANGUAGE_KEYS.includes(e.activity)) languageDays.add(e.date);
     }
     if (e.kind === 'bonus') s.perfectDays++;
     if (e.kind === 'comeback') s.comebacks++;
@@ -77,6 +80,9 @@ export function computeStats(state, d = derive(state)) {
   s.attrDays = Object.fromEntries(ATTR_KEYS.map((k) => [k, attrDaySets[k].size]));
   s.activityDays = Object.fromEntries(Object.entries(activityDaySets).map(([k, v]) => [k, v.size]));
   s.restDays = restDays.size;
+  s.languageDays = languageDays.size;
+  // dias do segundo idioma mais praticado (para "Duas Vozes")
+  s.languageDaysSecond = LANGUAGE_KEYS.map((k) => s.activityDays[k] || 0).sort((a, b) => b - a)[1] || 0;
   const ar = Object.values(areaRanks(state));
   s.dungeonsCleared = Object.values(state.dungeons || {}).filter((r) => r.clearedAt).length;
   s.maxAreaRank = Math.max(-1, ...ar);
@@ -402,6 +408,31 @@ export function logActivity(state, activityKey, opts = {}, today = todayKey(stat
   return entry;
 }
 
+/** Registra uma micro-prática de idioma. Usa as mesmas regras de qualquer atividade (limite diário, intervalo). */
+export function logLanguage(state, lang, practiceId, opts = {}, today = todayKey(state)) {
+  if (!LANGUAGE_KEYS.includes(lang)) throw new RuleError('Idioma não encontrado.');
+  if (!state.profile.languages?.includes(lang)) throw new RuleError('Ative este idioma na tela Idiomas primeiro.');
+  const practice = practiceInfo(practiceId);
+  if (!practice) throw new RuleError('Prática não encontrada.');
+  if (!state.settings.activities.some((a) => a.key === lang)) {
+    throw new RuleError('A atividade deste idioma foi excluída. Recrie-a em Ajustes → Atividades.');
+  }
+  const entry = logActivity(state, lang, { ...opts, note: opts.note || practice.label }, today);
+  entry.practice = practice.id;
+  return entry;
+}
+
+/** Liga ou desliga um idioma só para esta pessoa. Ao ligar, a atividade do idioma é criada se não existir. */
+export function toggleLanguage(state, lang, on) {
+  const info = languageInfo(lang);
+  if (!info) throw new RuleError('Idioma não encontrado.');
+  const list = new Set(state.profile.languages || []);
+  if (on) list.add(lang); else list.delete(lang);
+  state.profile.languages = LANGUAGE_KEYS.filter((k) => list.has(k));
+  if (on && !state.settings.activities.some((a) => a.key === lang)) state.settings.activities.push(structuredClone(info.activity));
+  return state.profile.languages;
+}
+
 /** Remove uma entrada de esforço do histórico (correção de erro). */
 export function removeEntry(state, entryId, today = todayKey(state)) {
   const e = state.log.find((x) => x.id === entryId);
@@ -681,6 +712,8 @@ export function applyPersonalization(state, plan, { replace = true } = {}, today
   state.profile.life = { ...plan.profile, updatedAt: clock.now() };
   state.profile.personalizedAt = clock.now();
   updateRules(state, { difficulty: plan.rules.difficulty, dayStartHour: plan.rules.dayStartHour });
+  if (Array.isArray(plan.languages)) for (const k of LANGUAGE_KEYS) toggleLanguage(state, k, plan.languages.includes(k));
+  if (plan.easyRead !== undefined) state.profile.easyRead = !!plan.easyRead;
   state.settings.health.sleepGoal = plan.health.sleepGoal;
   for (const a of plan.activities) {
     const exists = state.settings.activities.find((x) => x.key === a.key);
@@ -713,6 +746,7 @@ export function updateProfile(state, patch) {
     if (!derive(state).perks.themes.includes(patch.theme)) throw new RuleError('Tema bloqueado: evolua de classe para liberar.');
     p.theme = patch.theme;
   }
+  if (patch.easyRead !== undefined) p.easyRead = !!patch.easyRead;
   return p;
 }
 

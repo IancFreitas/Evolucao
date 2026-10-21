@@ -1,4 +1,5 @@
 import * as E from '../../core/engine.js';
+import { languageChooser } from './languages.js';
 import { ATTRIBUTES, DEFAULT_RULES } from '../../core/defaults.js';
 import { DIFFICULTY, THEMES, totalXpForLevel } from '../../core/levels.js';
 import { MISSION_TYPES } from '../../core/missions.js';
@@ -21,6 +22,8 @@ function profileTab(c) {
     Mudou algo na sua vida? Refaça a entrevista e o Sistema se adapta.<div class="row wrap mt-s"><button class="btn sm primary" data-action="awaken-start">${c.state.profile.personalizedAt ? 'Refazer personalização' : 'Personalizar agora'}</button></div></div>
     <form data-form="profile" class="form-grid"><label class="field">Nome do personagem<input name="name" maxlength="40" value="${esc(c.state.profile.name)}"></label>
     <div class="full"><button class="btn primary sm">Salvar</button></div></form>
+    <div class="hud mt">Idiomas e leitura (só para você, neste aparelho)</div>
+    ${languageChooser(c)}
     <div class="hud mt">Tema visual</div>
     <div class="chips">${Object.entries(THEMES).map(([k, t]) => {
       const unlocked = c.d.perks.themes.includes(k);
