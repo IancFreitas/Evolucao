@@ -1,3 +1,40 @@
+# System Ascension (pasta Evolucao)
+
+PWA de RPG de evolução pessoal: hábitos viram XP, níveis, atributos, classes, dungeons, conquistas e loja. Dados só no aparelho (IndexedDB). Responda ao dono em português do Brasil, curto e direto.
+
+- Stack: HTML, CSS e JS em módulos ES puros, sem build e sem dependências de runtime. Node 22 só para testes; Python 3 só para servir estáticos.
+- Comandos: `npm start` (servidor em http://localhost:8080) e `npm test` (`node --test tests/*.test.mjs`).
+
+## Onde está cada coisa
+- `docs/ARQUITETURA.md`: camadas, princípios (fonte das regras R1–R5, R7, R8) e como expandir.
+- `docs/INTEGRACOES.md`: importadores e fila de confirmação (R6, R9). `docs/SAUDE-IPHONE.md`: integração com o app Saúde (R11).
+- `src/core/` regras puras (testadas); `src/storage/` IndexedDB, migrações, backup; `src/services/` notificações e importadores; `src/ui/` casca, componentes e `views/`.
+- `sw.js` (offline, `VERSION`, `SHELL`), `tests/core.test.mjs`, `README.md` (tabelas de conquistas e XP).
+
+## Regras que não podem escapar (resumo; R1–R9 e R11 têm fonte nos docs acima; R10, R12 e R13 estão no código: `db.js`, `backup.js`, `sw.js`)
+- R1 XP, moedas e atributos nunca são campos editáveis: são somas do livro-razão; nível, classe e recordes são derivados.
+- R2 Chaves únicas impedem duplicidade (`m:<missão>:<dia>`, `ext:<origem>:<id>`).
+- R3 Reconciliação, não contadores; desfazer remove a recompensa.
+- R4 Conquistas são permanentes.
+- R5 Mudança de regra vale só daqui pra frente (a entrada guarda o XP do momento).
+- R6 O que vem de fora só gera progresso após confirmação na fila.
+- R7 Tela nova: `src/ui/views/<nome>.js` + `VIEWS` em `src/ui/app.js` + `SHELL` do `sw.js`.
+- R8 Regra/atributo novo: `defaults.js` + migração em `migrations.js` + `SCHEMA_VERSION`.
+- R9 Integração nova: itens `{source, externalId, date, title, activity}` e `engine.addPending`.
+- R10 Privacidade: nada sai do aparelho (sem servidor, CDN, rastreador ou fetch externo), salvo backup exportado.
+- R11 Saúde: a parte do link após `#` nunca vai ao servidor; só os últimos 30 dias.
+- R12 Backup com senha usa AES-GCM + PBKDF2 (250.000 iterações); sem senha é JSON simples.
+- R13 Service worker: rede primeiro, cache como reserva; `SHELL` é lista manual.
+
+## Checklist de feature
+1. Regra em `src/core/` (pura) e teste em `tests/core.test.mjs`.
+2. Tela nova: view + `VIEWS` + `SHELL` (R7). Arquivo novo carregado pelo app também entra no `SHELL`.
+3. Estado novo: defaults + migração + `SCHEMA_VERSION` (R8).
+4. Incrementar `VERSION` do `sw.js` ao mudar a lista `SHELL` (a troca limpa o cache antigo; com rede primeiro, editar um arquivo já listado chega online sem bump). Hoje `sa-v9`.
+5. Atualizar o `README.md` (tabelas de conquistas e XP) e rodar `npm test`.
+
+**Atenção:** o workflow `.github/workflows/pages.yml` publica no GitHub Pages a cada push em `claude/system-ascension-rpg-ml5zrf` e `main` (roda `npm test` antes). Push = publicação pública.
+
 ## Equipe de agentes (obrigatório)
 
 Todo trabalho feito neste projeto passa por uma equipe de quatro subagentes, definidos em `.claude/agents/` (do projeto ou de `~/.claude/agents/`):
@@ -32,3 +69,30 @@ Os subagentes editam direto na árvore de trabalho; um `REFAZER` parte do estado
 - Tarefas pequenas podem pular o Júnior ou o Pleno, mas **nunca** pulam o Sênior e o Gerente quando há mudança em código, arquivos ou ações externas.
 
 <!-- fim-equipe -->
+
+## A equipe neste projeto
+
+Regra geral: custo proporcional ao risco. O fluxo, a discussão e as 3 rodadas são os da seção acima; aqui só se diz quem faz o quê em cada processo.
+
+O Sênior e o Gerente participam de toda mudança em arquivos (regra da seção acima); o que muda é a profundidade. **Revisão completa do Sênior** (adversarial, com caminho concreto de falha) quando o diff tocar: livro-razão (`ledger.js`), `engine.js`, `storage/` (db, backup, migrações), `migrations.js`/`SCHEMA_VERSION`, `sw.js` (VERSION/SHELL/cache) ou qualquer coisa ligada a privacidade (R10–R12, rede, `fetch`, bibliotecas externas). Fora disso, o Sênior faz uma passada curta no diff e o parecer é curto.
+
+| Processo | Júnior (paralelo no início) | Pleno | Sênior | Gerente / dono |
+|---|---|---|---|---|
+| Feature | `npm test` de base; lista dos arquivos a tocar (view, VIEWS, SHELL, README); depois confere o checklist | Regra, view, testes | Revisão de R1–R5; completa se tocar os itens acima | Gerente decide; dono aprova o escopo; push só se o dono pedir |
+| Ajuste de regra/XP | Lista valores atuais em `defaults.js` e tabela do README | Altera valores e testes | Checa efeito em dados existentes (R5) e no livro-razão | Dono aprova o balanceamento |
+| Bug | Reproduz e roda os testes | Corrige + teste de regressão (se for regra) | Passada curta; completa se tocar storage, `sw.js` ou privacidade | Gerente decide; push só se o dono pedir |
+| Migração | Levanta os campos novos e o teste de backup antigo (`core.test.mjs`, “migração preenche campos ausentes”) | Escreve a migração (modo fill) e o teste com backup antigo | Completa; propõe o `SCHEMA_VERSION` | Dono aprova |
+| Integração | Levanta o formato de entrada e os exemplos (`docs/exemplos/`, `tests/fixtures/`) | Adaptador + `engine.addPending` + teste de duplicidade | Completa (privacidade, fila R6) | Dono aprova |
+| Publicar | Confere workflow, `VERSION` e `npm test` | Bump do `VERSION`/`SHELL` se faltar | Revisa mudança de SHELL/cache (completa) | Push só com pedido do dono (é público) |
+
+Paralelismo: Júnior (levantamento/testes de base) roda junto com o Pleno em arquivos disjuntos; README e tabelas podem ir para o Júnior enquanto o Pleno codifica, desde que o Pleno revise. Dois membros nunca editam o mesmo arquivo na mesma rodada.
+
+Pode pular: Júnior em mudanças de uma ou duas linhas; Pleno quando o Sênior já implementa a parte difícil; texto/README sem código ainda passa por Sênior e Gerente, mas de forma curta.
+
+Pontos de aprovação do dono: escopo de feature nova, balanceamento de XP/recompensas, mudança de `SCHEMA_VERSION`, qualquer push (publica no Pages) e qualquer coisa que altere a promessa de privacidade.
+
+### Pendências conhecidas (verificadas, ainda não corrigidas)
+- `README.md:36` diz 36 conquistas; `ACHIEVEMENTS` em `src/core/achievements.js` tem 41.
+- `SCHEMA_VERSION` está em 1 (`defaults.js:4`) e `migrations.js:54` só regrava a versão; nenhuma migração incrementou.
+- `assets/icon-maskable-512.png` está no `manifest.webmanifest` mas não no `SHELL` do `sw.js`.
+- `pages.yml` dispara também em `main`, mas só existe a branch `claude/system-ascension-rpg-ml5zrf`.
