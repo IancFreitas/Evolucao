@@ -5,6 +5,9 @@ import { TIERS, CLASS_MIN_ATTR_LEVEL } from '../../core/levels.js';
 import { completionKey, essentialsFor, isPostponed, isScheduled } from '../../core/missions.js';
 import { inactiveGapBefore } from '../../core/streaks.js';
 import { focusAreas } from '../../core/analytics.js';
+import { ATTRIBUTES as ATTRS } from '../../core/defaults.js';
+import { PHASE_TYPES, activePhases, pausingPhase } from '../../core/phases.js';
+import { MOODS } from '../../core/dayreview.js';
 import { esc, fmt, icon } from '../dom.js';
 import { run, store } from '../app.js';
 import { missionRow } from './missions.js';
@@ -48,7 +51,7 @@ export function attributesPanel(c) {
 
 function today(c) {
   const { state } = c;
-  const daily = state.missions.filter((m) => m.type === 'daily' && m.status === 'active' && isScheduled(m, c.today));
+  const daily = state.missions.filter((m) => m.type === 'daily' && m.status === 'active' && isScheduled(m, c.today) && !pausingPhase(state, m, c.today));
   const ess = essentialsFor(state, c.today);
   const essDone = ess.filter((m) => c.d.keys.has(completionKey(m, c.today))).length;
   const bonus = c.d.keys.has(`bonus:${c.today}`);
@@ -64,6 +67,17 @@ function today(c) {
     <div class="list">${ordered.map((m) => missionRow(c, m, { compact: true })).join('') || `<div class="empty"><b>Sem missões diárias para hoje.</b>Aproveite para registrar atividades livres ou descansar.</div>`}</div>
     ${open.length ? `<div class="hud mt">Em andamento</div><div class="list mt-s">${open.map((m) => missionRow(c, m, { compact: true })).join('')}</div>` : ''}
     <div class="row wrap mt"><button class="btn sm" data-nav="log">${icon('log')} Registrar atividade</button><button class="btn sm ghost" data-nav="missions">Todas as missões →</button></div>
+  </div>`;
+}
+
+function dayCard(c) {
+  const phases = activePhases(c.state, c.today);
+  const mood = MOODS[c.state.journal?.[c.today]?.mood];
+  const names = (keys) => keys.map((k) => ATTRS.find((a) => a.key === k)?.name || k).join(', ');
+  return `<div class="panel day-card">
+    ${phases.map((p) => `<div class="phase-line"><b>${(PHASE_TYPES[p.type] || PHASE_TYPES.custom).icon} ${esc(p.title)}</b> · ${p.end ? `até ${formatDay(p.end)}` : 'sem data para acabar'}
+      ${p.pause?.length ? `<div class="tl-sub">⏸ Pausado: ${esc(names(p.pause))}</div>` : ''}</div>`).join('')}
+    <button class="btn big primary" data-nav="day">📝 Como foi seu dia?${mood ? ` <span class="chip">${mood.icon} ${mood.label}</span>` : ''}</button>
   </div>`;
 }
 
@@ -123,6 +137,7 @@ function inbox(c) {
 
 function render(c) {
   return `<div class="page-head"><div><div class="hud">[ Sistema ] Janela de status · ${formatDay(c.today, { withWeekday: true })}</div><h1>Status</h1></div></div>
+    ${dayCard(c)}
     ${banners(c)}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));align-items:start">
       ${hero(c)}

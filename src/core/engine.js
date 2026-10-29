@@ -2,13 +2,15 @@
 // Todas as funções recebem o estado (já clonado pela camada de armazenamento) e o alteram.
 // Não há acesso a DOM nem a armazenamento aqui.
 import { addDays, dayKey, diffDays, weekKey } from './dates.js';
-import { ATTR_KEYS, DAY_STATUSES, DEFAULT_RULES, uid } from './defaults.js';
+import { ATTR_KEYS, DAY_STATUSES, DEFAULT_RULES, PROTECTED_STATUSES, uid } from './defaults.js';
 import { DIFFICULTY, THEMES, attrLevel, classFor, levelFromXp, perksFor } from './levels.js';
 import { EFFORT_KINDS, RuleError, attrsFor, award, coinsFor, hasKey, revokeId, revokeKey } from './ledger.js';
 import {
   BOSS_STAGE_SHARE, MAIN_MILESTONES, MAIN_MILESTONE_SHARE, activityOf, completionKey, essentialsFor,
   isScheduled, missionXp, normalizeMission,
 } from './missions.js';
+import { PHASE_TYPES, pausingPhase } from './phases.js';
+import { MOODS } from './dayreview.js';
 import { computeStreak, effortDays, inactiveGapBefore } from './streaks.js';
 import { ACHIEVEMENTS, RARITY } from './achievements.js';
 import { RANKS, areaRanks, dungeonDef, dungeonStatus, hunterRank } from './dungeons.js';
@@ -373,7 +375,7 @@ export function logActivity(state, activityKey, opts = {}, today = todayKey(stat
   if (!opts.noMissionMatch && diffDays(date, today) <= rules.backdateDays) {
     const mission = state.missions.find(
       (m) => m.type === 'daily' && m.activity === activityKey && m.status === 'active' &&
-        isScheduled(m, date) && !hasKey(state, completionKey(m, date)),
+        isScheduled(m, date) && !pausingPhase(state, m, date) && !hasKey(state, completionKey(m, date)),
     );
     if (mission) {
       const entry = completeMission(state, mission.id, { date }, today);
@@ -452,7 +454,7 @@ export function removeEntry(state, entryId, today = todayKey(state)) {
 /* Bônus diário, retomada e estado do dia.                             */
 /* ------------------------------------------------------------------ */
 
-export function reconcileDailyBonus(state, date) {
+export function reconcileDailyBonus(state, date, { revoke = true } = {}) {
   const rules = state.settings.rules;
   const key = `bonus:${date}`;
   const ess = essentialsFor(state, date);
@@ -463,7 +465,7 @@ export function reconcileDailyBonus(state, date) {
       key, kind: 'bonus', date, title: 'Bônus: missões essenciais do dia completas', xp,
       coins: coinsFor(xp, rules, perksOf(state)), attrs: { DISC: 2 }, source: 'system', ts: clock.now(),
     });
-  } else if (!allDone) revokeKey(state, key);
+  } else if (!allDone && revoke) revokeKey(state, key);
 }
 
 function checkComeback(state, date, today) {
@@ -488,6 +490,104 @@ export function setDayStatus(state, date, status, note = '', today = todayKey(st
   else state.days[date] = { status, note: String(note).slice(0, 200), at: clock.now() };
   reconcileDailyBonus(state, date);
   return state.days[date] || null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Fases e diário do dia.                                              */
+/* ------------------------------------------------------------------ */
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ALL_WEEK = [0, 1, 2, 3, 4, 5, 6];
+const phaseMissions = (state, id) => state.missions.filter((m) => m.phaseId === id);
+
+/** Cria ou edita uma fase e suas missões temporárias (diárias leves, não essenciais). */
+export function savePhase(state, input, today = todayKey(state)) {
+  state.phases ||= [];
+  const existing = input.id && state.phases.find((p) => p.id === input.id);
+  const type = existing ? existing.type : input.type;
+  const def = PHASE_TYPES[type];
+  if (!def) throw new RuleError('Tipo de fase inválido.');
+  const title = String(input.title || '').trim().slice(0, 80) || def.label;
+  const start = input.start || existing?.start || today;
+  const end = input.end === undefined ? (existing?.end ?? null) : (input.end || null);
+  if (!DAY_RE.test(start) || (end && !DAY_RE.test(end))) throw new RuleError('Data inválida.');
+  if (diffDays(today, start) > 365) throw new RuleError('A fase pode começar em até 365 dias.');
+  // na edição só valida quando o início muda: fase antiga já salva continua salvando
+  if ((!existing || start !== existing.start) && diffDays(start, today) > 90) {
+    throw new RuleError('A fase pode ter começado no máximo 90 dias atrás.');
+  }
+  if (end && end < start) throw new RuleError('O fim da fase não pode ser antes do início.');
+  const pauseIn = Array.isArray(input.pause) ? input.pause : (existing?.pause ?? def.pause);
+  if (pauseIn.some((k) => !ATTR_KEYS.includes(k))) throw new RuleError('Área inválida para pausar.');
+  const pause = [...new Set(pauseIn)];
+  const protect = input.protect === undefined ? (existing ? existing.protect : def.protect) : !!input.protect;
+  const note = String(input.note === undefined ? (existing ? existing.note : def.note) : input.note).slice(0, 300);
+  if (existing) {
+    Object.assign(existing, { title, start, end, pause, protect, note });
+    for (const m of phaseMissions(state, existing.id)) Object.assign(m, { startDate: start, endDate: end });
+    reconcileDailyBonus(state, today, { revoke: false }); // fase nunca tira bônus já ganho
+    return existing;
+  }
+  const phase = { id: uid('ph-'), type, title, start, end, pause, protect, note, createdAt: clock.now() };
+  state.phases.push(phase);
+  for (const t of def.missions) {
+    saveMission(state, {
+      type: 'daily', title: t.title, activity: t.activity, light: t.light, essential: false, days: ALL_WEEK,
+      startDate: start, endDate: end, phaseId: phase.id,
+    }, today);
+  }
+  reconcileDailyBonus(state, today, { revoke: false }); // fase nunca tira bônus já ganho
+  return phase;
+}
+
+/** "Acabou / fui liberado": a fase termina ontem e tudo volta ao normal. */
+export function endPhase(state, id, today = todayKey(state)) {
+  const p = (state.phases || []).find((x) => x.id === id);
+  if (!p) throw new RuleError('Fase não encontrada.');
+  const yesterday = addDays(today, -1);
+  if (yesterday < p.start) return deletePhase(state, id, today);
+  if (!p.end || p.end > yesterday) p.end = yesterday;
+  for (const m of phaseMissions(state, id)) m.endDate = p.end;
+  reconcileDailyBonus(state, today, { revoke: false }); // fase nunca tira bônus já ganho
+  return p;
+}
+
+/** Remove a fase: missões dela sem histórico somem; as com histórico ficam arquivadas. */
+export function deletePhase(state, id, today = todayKey(state)) {
+  const i = (state.phases || []).findIndex((p) => p.id === id);
+  if (i < 0) throw new RuleError('Fase não encontrada.');
+  const [p] = state.phases.splice(i, 1);
+  state.missions = state.missions.filter((m) => {
+    if (m.phaseId !== id) return true;
+    if (state.log.some((e) => e.missionId === m.id)) {
+      m.status = 'archived';
+      // reativar a missão não faz ela voltar a aparecer (isScheduled dá falso); o histórico no livro fica
+      const yesterday = addDays(today, -1);
+      if (!m.endDate || m.endDate > yesterday) m.endDate = yesterday;
+      return true;
+    }
+    return false;
+  });
+  reconcileDailyBonus(state, today, { revoke: false }); // fase nunca tira bônus já ganho
+  return p;
+}
+
+/** Diário do dia: humor e texto livre. Nunca dá XP; humor cansativo/doente ajusta o estado do dia. */
+export function saveDayReview(state, date, { mood = '', text = '' } = {}, today = todayKey(state)) {
+  checkDate(state, date, today);
+  if (mood && !MOODS[mood]) throw new RuleError('Humor inválido.');
+  const clean = String(text || '').trim().slice(0, 1000);
+  state.journal ||= {};
+  if (!mood && !clean) {
+    delete state.journal[date];
+    return null;
+  }
+  state.journal[date] = { mood, text: clean, at: clock.now() };
+  const status = state.days[date]?.status;
+  if (mood === 'cansativo' && !status) setDayStatus(state, date, 'hard', '', today);
+  // doente vale mais que dia difícil; descanso/imprevisto/doente já definidos ficam como estão
+  if (mood === 'doente' && !PROTECTED_STATUSES.includes(status)) setDayStatus(state, date, 'sick', '', today);
+  return state.journal[date];
 }
 
 /* ------------------------------------------------------------------ */

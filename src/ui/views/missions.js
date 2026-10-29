@@ -4,6 +4,7 @@ import {
   MISSION_TYPES, activityOf, completionKey, isPostponed, isScheduled, missionXp,
 } from '../../core/missions.js';
 import { habitStreak } from '../../core/streaks.js';
+import { pausingPhase } from '../../core/phases.js';
 import { closeModal, confirmDialog, esc, fmt, icon, openModal, promptDialog, toast } from '../dom.js';
 import { render as rerender, run, ui } from '../app.js';
 
@@ -31,7 +32,8 @@ export function missionRow(c, m, { compact = false } = {}) {
   const archived = m.status === 'archived';
   const completed = m.status === 'completed';
   const hard = c.state.days[c.today]?.status === 'hard';
-  const cls = ['mission', m.type === 'boss' ? 'boss' : '', done || completed ? 'done' : '', skipped ? 'skipped' : '', archived ? 'archived' : ''].join(' ');
+  const paused = m.type === 'daily' && m.status === 'active' && !done ? pausingPhase(c.state, m, c.today) : null;
+  const cls = ['mission', paused ? 'paused' : '', m.type === 'boss' ? 'boss' : '', done || completed ? 'done' : '', skipped ? 'skipped' : '', archived ? 'archived' : ''].join(' ');
   const meta = [];
   if (act) meta.push(`<span>${act.icon} ${esc(act.name)}</span>`);
   meta.push(`<span class="xp-tag">${xpLabel(c, m)}</span>`);
@@ -42,6 +44,7 @@ export function missionRow(c, m, { compact = false } = {}) {
     if (!compact && m.days.length < 7) meta.push(`<span class="dim">${m.days.map(weekdayName).join(' ')}</span>`);
   }
   if (skipped) meta.push('<span class="chip">adiada hoje</span>');
+  if (paused) meta.push(`<span class="chip">⏸ Pausada: ${esc(paused.title)}</span>`);
   if (archived) meta.push('<span class="chip">pausada</span>');
   if (m.source) meta.push(`<span class="chip">via ${esc(m.source)}</span>`);
   meta.push(dueChip(c, m));

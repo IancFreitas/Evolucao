@@ -5,6 +5,10 @@ import * as E from '../src/core/engine.js';
 import { addDays, weekKey } from '../src/core/dates.js';
 import { levelFromXp, totalXpForLevel, archetypeFor, classFor, DIFFICULTY } from '../src/core/levels.js';
 import { buildPlan, storyHints, parseClaudeProfile } from '../src/core/personalize.js';
+import { essentialsFor, isScheduled } from '../src/core/missions.js';
+import { activePhases, isPhaseProtected, pausingPhase } from '../src/core/phases.js';
+import { isProtected } from '../src/core/streaks.js';
+import { suggestFromText } from '../src/core/dayreview.js';
 import { migrate } from '../src/storage/migrations.js';
 
 // Relógio controlado: 2026-10-14 (quarta-feira) às 10h.
@@ -420,4 +424,212 @@ test('personalização entende fase leve, casa, idiomas e leitura fácil', () =>
   assert.ok(s.settings.activities.some((a) => a.key === 'chines'));
   E.applyPersonalization(s, normal, { replace: true });
   assert.deepEqual(s.profile.languages, []);
+});
+
+/* ---------------- Fases e "Como foi seu dia?" ---------------- */
+
+test('fase de cirurgia pausa treino e cardio, não pausa estudo; essentialsFor exclui a pausada', () => {
+  const s = fresh();
+  const treino = daily(s, { title: 'Treino', activity: 'treino' });
+  const estudo = daily(s);
+  const today = E.todayKey(s);
+  assert.equal(essentialsFor(s, today).length, 2);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: today, end: addDays(today, 10) });
+  assert.deepEqual(ph.pause, ['STR', 'END']);
+  assert.equal(pausingPhase(s, treino, today).id, ph.id);
+  assert.equal(pausingPhase(s, estudo, today), null);
+  assert.deepEqual(essentialsFor(s, today).map((m) => m.id), [estudo.id]);
+  // concluir mesmo pausada é permitido
+  assert.equal(E.completeMission(s, treino.id).kind, 'mission');
+  // registro livre ignora a missão pausada
+  advance(30);
+  const free = E.logActivity(s, 'treino');
+  assert.equal(free.kind, 'activity');
+});
+
+test('fase com protect protege o dia; sem protect não', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  E.savePhase(s, { type: 'viagem', start: today, end: addDays(today, 3) });
+  E.savePhase(s, { type: 'provas', start: addDays(today, 10), end: null });
+  assert.equal(isProtected(s, today), true);
+  assert.equal(isProtected(s, addDays(today, 3)), true);
+  assert.equal(isProtected(s, addDays(today, 4)), false);
+  assert.equal(isProtected(s, addDays(today, 11)), false);
+});
+
+test('missões temporárias só aparecem no período e somem após endPhase', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -2), end: addDays(today, 5) });
+  const temp = s.missions.filter((m) => m.phaseId === ph.id);
+  assert.equal(temp.length, 3);
+  assert.ok(temp.every((m) => !m.essential && m.type === 'daily' && m.light && m.endDate === addDays(today, 5)));
+  assert.equal(isScheduled(temp[0], today), true);
+  assert.equal(isScheduled(temp[0], addDays(today, 6)), false);
+  E.endPhase(s, ph.id, today);
+  assert.equal(ph.end, addDays(today, -1));
+  assert.equal(isScheduled(temp[0], today), false);
+  assert.equal(isScheduled(temp[0], addDays(today, -1)), true);
+  assert.equal(activePhases(s, today).length, 0);
+});
+
+test('endPhase em fase futura remove a fase; deletePhase arquiva missões com histórico', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const fut = E.savePhase(s, { type: 'cirurgia', start: addDays(today, 5), end: null });
+  assert.equal(s.missions.length, 3);
+  E.endPhase(s, fut.id, today);
+  assert.equal(s.phases.length, 0);
+  assert.equal(s.missions.length, 0);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: today, end: null });
+  const agua = s.missions.find((m) => m.title.startsWith('Beber água'));
+  E.completeMission(s, agua.id);
+  const xp = E.derive(s).totalXp;
+  E.deletePhase(s, ph.id);
+  assert.equal(s.phases.length, 0);
+  assert.equal(s.missions.length, 1);
+  assert.equal(s.missions[0].status, 'archived');
+  assert.equal(E.derive(s).totalXp, xp);
+});
+
+test('fase futura não afeta hoje; validações da fase', () => {
+  const s = fresh();
+  const treino = daily(s, { title: 'Treino', activity: 'treino' });
+  const today = E.todayKey(s);
+  E.savePhase(s, { type: 'cirurgia', start: addDays(today, 7), end: addDays(today, 20) });
+  assert.equal(pausingPhase(s, treino, today), null);
+  assert.equal(isPhaseProtected(s, today), false);
+  assert.ok(pausingPhase(s, treino, addDays(today, 8)));
+  assert.throws(() => E.savePhase(s, { type: 'x', start: today }), /Tipo/);
+  assert.throws(() => E.savePhase(s, { type: 'viagem', start: addDays(today, 400) }), /365/);
+  assert.throws(() => E.savePhase(s, { type: 'viagem', start: today, end: addDays(today, -1) }), /antes do início/);
+  const c = E.savePhase(s, { type: 'custom', title: 'Prova', start: today, pause: ['INT'] });
+  assert.deepEqual(c.pause, ['INT']);
+  assert.throws(() => E.savePhase(s, { type: 'custom', start: today, pause: ['XX'] }), /inválida/);
+  // edição ajusta datas das missões da fase
+  const cir = E.savePhase(s, { type: 'cirurgia', start: today, end: null });
+  E.savePhase(s, { id: cir.id, end: addDays(today, 4) });
+  assert.ok(s.missions.filter((m) => m.phaseId === cir.id).every((m) => m.endDate === addDays(today, 4)));
+});
+
+test('bônus diário: essenciais todas pausadas não dão bônus de graça', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const treino = daily(s, { title: 'Treino', activity: 'treino' });
+  E.savePhase(s, { type: 'cirurgia', start: today, end: null });
+  E.reconcileDailyBonus(s, today);
+  assert.equal(E.derive(s).totalXp, 0);
+  E.completeMission(s, treino.id);
+  assert.equal(E.derive(s).totalXp, 40); // só a missão, sem bônus
+});
+
+test('saveDayReview: cansativo marca dia difícil, doente marca doente e não dá XP', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const xp = E.derive(s).totalXp;
+  E.saveDayReview(s, today, { mood: 'cansativo', text: 'Dia puxado' });
+  assert.equal(s.days[today].status, 'hard');
+  assert.equal(s.journal[today].mood, 'cansativo');
+  E.saveDayReview(s, today, { mood: 'doente', text: 'piorei' });
+  assert.equal(s.days[today].status, 'sick');
+  E.setDayStatus(s, today, 'rest');
+  E.saveDayReview(s, today, { mood: 'cansativo' });
+  assert.equal(s.days[today].status, 'rest');
+  assert.equal(E.derive(s).totalXp, xp);
+  assert.throws(() => E.saveDayReview(s, addDays(today, 1), { mood: 'bom' }), /futuro/);
+  assert.throws(() => E.saveDayReview(s, today, { mood: 'feliz' }), /Humor/);
+  assert.equal(E.saveDayReview(s, today, { text: 'x'.repeat(2000) }).text.length, 1000);
+});
+
+test('suggestFromText sugere a missão ou a atividade certa, sem duplicar', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const casa = daily(s, { title: 'Arrumar a casa', activity: 'domestica', essential: false });
+  const r = suggestFromText(s, 'Hoje lavei a louça e arrumei o quarto, depois caminhei no parque. Li um pouco.', today);
+  assert.deepEqual(r.filter((x) => x.kind === 'mission').map((x) => x.missionId), [casa.id]);
+  assert.equal(r.filter((x) => x.activity === 'domestica').length, 1);
+  assert.ok(r.some((x) => x.kind === 'activity' && x.activity === 'cardio'));
+  assert.ok(r.some((x) => x.activity === 'leitura'));
+  assert.equal(suggestFromText(s, 'livro livro', today).length, 1);
+  assert.equal(suggestFromText(s, 'linha de ônibus', today).length, 0);
+  // nada pontua e missão concluída deixa de ser sugerida
+  E.completeMission(s, casa.id);
+  assert.ok(suggestFromText(s, 'lavei a louça', today).every((x) => x.kind === 'activity'));
+  // atividade personalizada pelo nome
+  s.settings.activities.push({ key: 'canal', name: 'Pesquisa e roteiro do canal', icon: '🎬', xp: 20, attrs: { INT: 2 }, dailyLimit: 2 });
+  assert.equal(suggestFromText(s, 'fiz o roteiro do vídeo', today)[0].activity, 'canal');
+});
+
+test('migração preenche phases e journal em backup antigo', () => {
+  const old = migrate({ version: 1, profile: { name: 'Ian' }, log: [] });
+  assert.deepEqual(old.phases, []);
+  assert.deepEqual(old.journal, {});
+  assert.deepEqual(createInitialState({ today: '2026-10-14' }).phases, []);
+});
+
+test('fase nunca tira bônus diário já ganho (criar ou encerrar no mesmo dia)', () => {
+  const s = fresh();
+  const treino = daily(s, { title: 'Treino', activity: 'treino' });
+  const today = E.todayKey(s);
+  E.completeMission(s, treino.id);
+  const xp = () => s.log.reduce((a, e) => a + e.xp, 0);
+  const before = xp();
+  assert.ok(s.log.some((e) => e.kind === 'bonus'));
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -2), end: null });
+  assert.equal(xp(), before);
+  E.endPhase(s, ph.id);
+  assert.equal(xp(), before);
+  // desfazer a missão continua removendo o bônus (R3)
+  E.undoMission(s, treino.id);
+  assert.ok(!s.log.some((e) => e.kind === 'bonus'));
+});
+
+test('fase: início a 91 dias atrás é rejeitado, a 90 é aceito', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  assert.throws(() => E.savePhase(s, { type: 'cirurgia', start: addDays(today, -91) }), /90 dias/);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -90) });
+  assert.equal(ph.start, addDays(today, -90));
+  // editar sem mudar o início continua permitido mesmo depois de o prazo passar
+  assert.ok(E.savePhase(s, { id: ph.id, title: 'Outro nome' }, addDays(today, 5)));
+});
+
+test('excluir fase com missão concluída arquiva com endDate = ontem e não reaparece', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -2), end: null });
+  const m = s.missions.find((x) => x.phaseId === ph.id);
+  E.completeMission(s, m.id);
+  const xp = () => s.log.reduce((a, e) => a + e.xp, 0);
+  const before = xp();
+  const entries = s.log.length;
+  E.deletePhase(s, ph.id);
+  const arq = s.missions.find((x) => x.id === m.id);
+  assert.equal(arq.status, 'archived');
+  assert.equal(arq.endDate, addDays(today, -1));
+  assert.equal(xp(), before);
+  assert.equal(s.log.length, entries);
+  arq.status = 'active';
+  assert.equal(isScheduled(arq, today), false);
+});
+
+test('suggestFromText ignora negação e não repete área já registrada no dia', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  assert.deepEqual(suggestFromText(s, 'não fui à academia, nao treinei', today), []);
+  const m = E.saveMission(s, { type: 'daily', title: 'Louça', activity: 'domestica' });
+  assert.deepEqual(suggestFromText(s, 'lavei a louça', today).map((x) => x.kind), ['mission']);
+  E.completeMission(s, m.id);
+  assert.deepEqual(suggestFromText(s, 'lavei a louça', today), []);
+});
+
+test('migração descarta fases e diário malformados sem travar', () => {
+  const r = migrate({ phases: [null, 'x', {}, { id: 'a', start: 'ontem' }, { id: 'b', start: '2026-10-01', pause: 'STR' }], journal: { '2026-10-01': null, '2026-10-02': 'oi', '2026-10-03': { text: 5 } } });
+  assert.deepEqual(r.phases.map((p) => p.id), ['b']);
+  assert.deepEqual(r.phases[0].pause, []);
+  assert.deepEqual(Object.keys(r.journal), ['2026-10-03']);
+  assert.equal(r.journal['2026-10-03'].text, '');
+  assert.deepEqual(migrate({ phases: { a: 1 }, journal: [1] }).phases, []);
+  assert.equal(activePhases(r, '2026-10-05').length, 1);
 });
