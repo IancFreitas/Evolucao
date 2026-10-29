@@ -144,6 +144,8 @@ export function createInitialState({ name = 'Jogador', withExamples = true, toda
     pending: [],
     inbox: [],
     dungeons: {},
+    phases: [],
+    journal: {},
     meta: { backups: 0, lastBackupAt: null, lastNotified: {}, addedActivities: ['passos'] },
   };
 }

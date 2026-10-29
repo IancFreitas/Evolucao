@@ -4,6 +4,7 @@ import { addDays, rangeDays, weekKey } from './dates.js';
 import { PROTECTED_STATUSES } from './defaults.js';
 import { EFFORT_KINDS } from './ledger.js';
 import { completionKey, isScheduled } from './missions.js';
+import { isPhaseProtected, pausingPhase } from './phases.js';
 
 export function effortDays(state) {
   const set = new Set();
@@ -11,7 +12,7 @@ export function effortDays(state) {
   return set;
 }
 
-export const isProtected = (state, date) => PROTECTED_STATUSES.includes(state.days[date]?.status);
+export const isProtected = (state, date) => PROTECTED_STATUSES.includes(state.days[date]?.status) || isPhaseProtected(state, date);
 
 export function computeStreak(state, today, shieldsPerWeek, active = effortDays(state)) {
   const result = { current: 0, best: 0, shieldsLeft: shieldsPerWeek, shieldsUsed: 0, protectedDays: 0 };
@@ -69,7 +70,7 @@ export function habitStreak(state, m, today, keys) {
     if (keys.has(completionKey(m, d))) {
       cur++;
       best = Math.max(best, cur);
-    } else if (d === today || isProtected(state, d) || (m.skips || []).includes(d)) {
+    } else if (d === today || isProtected(state, d) || (m.skips || []).includes(d) || pausingPhase(state, m, d)) {
       continue;
     } else {
       cur = 0;

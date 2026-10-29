@@ -23,8 +23,9 @@ import achievementsView from './views/achievements.js';
 import shopView from './views/shop.js';
 import historyView from './views/history.js';
 import settingsView from './views/settings.js';
+import dayView from './views/day.js';
 
-const VIEWS = [statusView, missionsView, dungeonsView, logView, languagesView, analyticsView, achievementsView, shopView, historyView, settingsView];
+const VIEWS = [statusView, dayView, missionsView, dungeonsView, logView, languagesView, analyticsView, achievementsView, shopView, historyView, settingsView];
 const MOBILE_NAV = ['status', 'missions', 'dungeons', 'log'];
 
 /* ------------------------------ Store ------------------------------ */

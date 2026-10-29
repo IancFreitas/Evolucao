@@ -1,6 +1,7 @@
 // Regras puras de missões: agenda, períodos, chaves de conclusão e XP.
 import { weekday, weekKey } from './dates.js';
 import { uid } from './defaults.js';
+import { pausingPhase } from './phases.js';
 
 export const MISSION_TYPES = {
   daily: { label: 'Diárias', single: 'Diária', icon: '☀️', desc: 'Hábitos e compromissos do dia a dia.' },
@@ -27,6 +28,7 @@ export const completionKey = (m, date) => `m:${m.id}:${periodKey(m, date)}`;
 export function isScheduled(m, date) {
   if (m.status === 'archived') return false;
   if (m.startDate && date < m.startDate) return false;
+  if (m.endDate && date > m.endDate) return false;
   if (m.type === 'daily') return (m.days || []).includes(weekday(date));
   return true;
 }
@@ -64,6 +66,7 @@ export function normalizeMission(input, today) {
     m.days = Array.isArray(input.days) && input.days.length ? input.days.map(Number) : [0, 1, 2, 3, 4, 5, 6];
     m.light = String(input.light || '').slice(0, 160);
     m.skips = input.skips || [];
+    m.endDate = input.endDate || null;
   } else {
     m.dueDate = input.dueDate || null;
     m.postponedUntil = input.postponedUntil || null;
@@ -79,15 +82,17 @@ export function normalizeMission(input, today) {
   if (type === 'boss') {
     m.stages = (input.stages || []).map((s) => ({ id: s.id || uid('s-'), title: String(s.title).slice(0, 120), done: !!s.done }));
   }
+  if (input.phaseId) m.phaseId = input.phaseId;
   if (input.completedAt) m.completedAt = input.completedAt;
   if (input.source) m.source = input.source;
   if (input.extId) m.extId = input.extId;
   return m;
 }
 
-/** Missões diárias que contam para o bônus do dia. */
+/** Missões diárias que contam para o bônus do dia (as pausadas por fase ficam de fora). */
 export function essentialsFor(state, date) {
   return state.missions.filter(
-    (m) => m.type === 'daily' && m.essential && m.status === 'active' && isScheduled(m, date) && !isPostponed(m, date),
+    (m) => m.type === 'daily' && m.essential && m.status === 'active' && isScheduled(m, date) && !isPostponed(m, date) &&
+      !pausingPhase(state, m, date),
   );
 }
