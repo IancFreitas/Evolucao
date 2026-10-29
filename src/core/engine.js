@@ -512,6 +512,10 @@ export function savePhase(state, input, today = todayKey(state)) {
   const end = input.end === undefined ? (existing?.end ?? null) : (input.end || null);
   if (!DAY_RE.test(start) || (end && !DAY_RE.test(end))) throw new RuleError('Data inválida.');
   if (diffDays(today, start) > 365) throw new RuleError('A fase pode começar em até 365 dias.');
+  // na edição só valida quando o início muda: fase antiga já salva continua salvando
+  if ((!existing || start !== existing.start) && diffDays(start, today) > 90) {
+    throw new RuleError('A fase pode ter começado no máximo 90 dias atrás.');
+  }
   if (end && end < start) throw new RuleError('O fim da fase não pode ser antes do início.');
   const pauseIn = Array.isArray(input.pause) ? input.pause : (existing?.pause ?? def.pause);
   if (pauseIn.some((k) => !ATTR_KEYS.includes(k))) throw new RuleError('Área inválida para pausar.');
@@ -557,6 +561,9 @@ export function deletePhase(state, id, today = todayKey(state)) {
     if (m.phaseId !== id) return true;
     if (state.log.some((e) => e.missionId === m.id)) {
       m.status = 'archived';
+      // reativar a missão não faz ela voltar a aparecer (isScheduled dá falso); o histórico no livro fica
+      const yesterday = addDays(today, -1);
+      if (!m.endDate || m.endDate > yesterday) m.endDate = yesterday;
       return true;
     }
     return false;

@@ -585,6 +585,35 @@ test('fase nunca tira bônus diário já ganho (criar ou encerrar no mesmo dia)'
   assert.ok(!s.log.some((e) => e.kind === 'bonus'));
 });
 
+test('fase: início a 91 dias atrás é rejeitado, a 90 é aceito', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  assert.throws(() => E.savePhase(s, { type: 'cirurgia', start: addDays(today, -91) }), /90 dias/);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -90) });
+  assert.equal(ph.start, addDays(today, -90));
+  // editar sem mudar o início continua permitido mesmo depois de o prazo passar
+  assert.ok(E.savePhase(s, { id: ph.id, title: 'Outro nome' }, addDays(today, 5)));
+});
+
+test('excluir fase com missão concluída arquiva com endDate = ontem e não reaparece', () => {
+  const s = fresh();
+  const today = E.todayKey(s);
+  const ph = E.savePhase(s, { type: 'cirurgia', start: addDays(today, -2), end: null });
+  const m = s.missions.find((x) => x.phaseId === ph.id);
+  E.completeMission(s, m.id);
+  const xp = () => s.log.reduce((a, e) => a + e.xp, 0);
+  const before = xp();
+  const entries = s.log.length;
+  E.deletePhase(s, ph.id);
+  const arq = s.missions.find((x) => x.id === m.id);
+  assert.equal(arq.status, 'archived');
+  assert.equal(arq.endDate, addDays(today, -1));
+  assert.equal(xp(), before);
+  assert.equal(s.log.length, entries);
+  arq.status = 'active';
+  assert.equal(isScheduled(arq, today), false);
+});
+
 test('suggestFromText ignora negação e não repete área já registrada no dia', () => {
   const s = fresh();
   const today = E.todayKey(s);

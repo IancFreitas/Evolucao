@@ -72,8 +72,8 @@ function phasesPanel(c) {
           <label class="check"><input type="checkbox" name="protect"> Proteger a sequência</label>
         </div>
         <label class="field">Nome (opcional)<input name="title" maxlength="80" placeholder="Ex.: Minha cirurgia"></label>
-        <label class="field">Começa em<input type="date" name="start" value="${c.today}" required></label>
-        <label class="field">Termina em<input type="date" name="end" id="phaseend"></label>
+        <label class="field">Começa em<input type="date" name="start" value="${c.today}" min="${addDays(c.today, -90)}" max="${addDays(c.today, 365)}" required></label>
+        <label class="field">Termina em<input type="date" name="end" id="phaseend" min="${addDays(c.today, -90)}"></label>
         <label class="check"><input type="checkbox" name="noend" data-change="phase-noend"> Sem data para acabar</label>
         <button class="btn primary big">${icon('check')} Salvar fase</button>
       </form></details>
